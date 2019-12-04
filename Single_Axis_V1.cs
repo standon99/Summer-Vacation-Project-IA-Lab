@@ -63,7 +63,8 @@ public class Single_Axis_V1 : MonoBehaviour
     private float[] thumbTipV = new float[11];
     private float oldFingerTipV;
     private float oldThumbTipV;
-    private float[] indexThumbMidV = new float[11];
+    private float[] indexThumbMidV_X = new float[11];
+    private float[] indexThumbMidV_Y = new float[11];
 
     // Elapsed Time
     public float timeElapsed;
@@ -93,11 +94,14 @@ public class Single_Axis_V1 : MonoBehaviour
 
     // Kalman filtered data value
     public float[] filtered_x = new float[2];
+    public float[] filtered_y = new float[2];
     public float old_filtered_x = 10;
-    public float old_p_x= 10;
+    public float old_filtered_y = 10;
+    public float old_p_x_xaxis = 10;
+    public float old_p_x_yaxis = 10;
 
     // Vertical axis from LEAP motion module
-    //public int pos_y;
+    // public int pos_y;
 
     public int sent_data;
 
@@ -109,7 +113,9 @@ public class Single_Axis_V1 : MonoBehaviour
 
     // Variable to store gesture type
     public string gesture;
-
+    public int[] pinchHistory = new int[4];
+    public float pinchAvg = 0;
+    
     ArduinoSlidesAndRotary.ArduinoReader asar;
     //Vector interactionBox;
 
@@ -117,6 +123,7 @@ public class Single_Axis_V1 : MonoBehaviour
     {
         // String to store selected gesture type
         string gesture = "none";
+        float pinchSum = 0;
 
         /*
          * Finds the 
@@ -134,11 +141,35 @@ public class Single_Axis_V1 : MonoBehaviour
         //print(fingerDist);
         float middleFingerPalmDist = (float)Math.Sqrt(Math.Pow(((double)middleFingerTip.x - (double)palmPos.x), 2) + Math.Pow(((double)middleFingerTip.y - (double)palmPos.y), 2) + Math.Pow(((double)middleFingerTip.z - (double)palmPos.z), 2));
         //print(middleFingerPalmDist);
-        if (fingerDist <= 45 && middleFingerPalmDist >= 55)//t_f_x && t_f_y)// && t_f_z)
+        if ((fingerDist <= 45 || pinchAvg >= 0.75) && middleFingerPalmDist >= 55)  //t_f_x && t_f_y)// && t_f_z)
         {
+            if (fingerDist <= 45)
+            {
+                pinchHistory[itr % 4] = 1;
+            }
+            else
+            {
+                pinchHistory[itr % 4] = 0;
+            }
             gesture = "pinch";
         }
+        else
+        {
+            pinchHistory[itr % 4] = 0;
+        }
 
+        // Compute average of pinches
+        for (int i = 0; i < 4; i++)
+        {
+            pinchSum += pinchHistory[i];
+        }
+
+        pinchAvg = (float)(pinchSum / 4);
+
+        if (middleFingerPalmDist < 55)
+        {
+            gesture = "fist";
+        }
         return gesture;
     }
 
@@ -378,6 +409,8 @@ public class Single_Axis_V1 : MonoBehaviour
 
                     old_midPThumbIndex = midPThumbIndex;
 
+                    // Find modpoint between ___ Joint of thumb and ___ joint of index finger
+
                     //print("NEXT");
                     midPThumbIndex.x = ((thumbJoint.x + indexJoint.x) / 2);
                     //print(midPThumbIndex.x);
@@ -393,7 +426,10 @@ public class Single_Axis_V1 : MonoBehaviour
 
                     fingerTipV[index] = velocity_X(x_axis_index, old_pos_x_index, timeElapsed);
                     thumbTipV[index] = velocity_X(x_axis_thumb, old_pos_x_thumb, timeElapsed);
-                    indexThumbMidV[index] = velocity_X(midPThumbIndex.x, old_midPThumbIndex.x, timeElapsed);
+                    
+                    // Velcoity of index finger and thumb midpoint
+                    indexThumbMidV_X[index] = velocity_X(midPThumbIndex.x, old_midPThumbIndex.x, timeElapsed);
+                    indexThumbMidV_Y[index] = velocity_X(midPThumbIndex.x, old_midPThumbIndex.x, timeElapsed);
 
                     // Tracking the position of the tip of the index finger in all three dimensions
                     old_pos_x_index = x_axis_index;
@@ -448,10 +484,13 @@ public class Single_Axis_V1 : MonoBehaviour
                         sent_data = normalizedData(filtered_x[0]);
                         */
 
-                        filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV, old_filtered_x, old_p_x, (float)timeElapsed);
+                        filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV_X, old_filtered_x, old_p_x_xaxis, (float)timeElapsed);
                         old_filtered_x = filtered_x[0];
-                        old_p_x = filtered_x[1];
-                        sent_data = normalizedData(filtered_x[0], midPThumbIndex.y);
+                        old_p_x_xaxis = filtered_x[1];
+                        filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_x, old_p_x_yaxis, (float)timeElapsed);
+                        old_filtered_y = filtered_y[0];
+                        old_p_x_yaxis = filtered_y[1]; 
+                        sent_data = normalizedData(filtered_x[0], filtered_y[0]);
 
                     }
                     else
@@ -467,11 +506,19 @@ public class Single_Axis_V1 : MonoBehaviour
             {
                 // Empty arrays used in Kalman filter once hands are removed from the frame
                 filtered_x = new float[2];
+                filtered_y = new float[2];
                 fingerTipV = new float[11];
+                thumbTipV = new float[11];
+                
+                indexThumbMidV_X = new float[11];
+                indexThumbMidV_Y = new float[11];
+
                 // Ensure time elapsed doesnt keep growing (could cause the posiiton prediction in the Kalman function to be inflated)
                 timeElapsed = 0;
                 old_filtered_x = 0;
-                old_p_x= 0;
+                old_filtered_y = 0;
+                old_p_x_xaxis = 0;
+                old_p_x_yaxis = 0;
                 hands_out_of_view = true;
             }
 
