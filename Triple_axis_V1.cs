@@ -1,10 +1,10 @@
-﻿//************************************************************************************
-//* Monash University - Faculty of Information Technology - Immersive Analytics Lab  *
-//* Version 1.0 - December 2019                                                      *
-//************************************************************************************
+﻿/**************************************************************************************
+** Monash University - Faculty of Information Technology - Immersive Analytics Lab   **
+** Version 2.0 - December 2019                                                       **
+***************************************************************************************
 
-//-------------------------------------------------------------------------------------------------------------------------------
-/*
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
  *TO DO (SIDDHANT)/CHANGE LOG:
  * Smoothing of input (Kalman filter) --- DONE --- 2/12/19
  * Only send data if present position is different to previous position --- DONE --- 28/11/19
@@ -16,8 +16,9 @@
  * Gesture Recognition --- Can now terminate gesture tracking by closing fist --- 4/12/2019
  * Gesture Recognition --- Tracking center of hand gesture area
  * Gain Function --- Increase precision the higher you go (min 100 and max 300 due to accuracy issues) --- DRAFTED but not functioning optimally (have to address issues) --- 4/12/2019 
+ * Triple axis integration --- DONE --- Faders are jittery- will be fixed when new ones come in/are used
 */
-// ------------------------------------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 using System.Collections;
 using System.Collections.Generic;
@@ -103,7 +104,7 @@ public class Triple_axis_V1 : MonoBehaviour
     public Stopwatch stopwatch = new Stopwatch();
    
     // Arduino COM Port for Serial Communication
-    public string COM = "COM3";
+    public string COM = "COM11";
 
     // Variable to store gesture type
     public string gesture;
@@ -118,6 +119,8 @@ public class Triple_axis_V1 : MonoBehaviour
     {
         // String to store selected gesture type
         string gesture = "none";
+        
+        // Summation of pinch values for calculating the average
         float pinchSum = 0;
 
         /*
@@ -132,34 +135,43 @@ public class Triple_axis_V1 : MonoBehaviour
         //print(t_f_z);
         */
 
+        // Find absolute distance between index and middle finger tips- using pythagoras theorem in 3D
         float fingerDist = (float)Math.Sqrt(Math.Pow(((double)thumbTip.x - (double)fingerTip.x), 2) + Math.Pow(((double)thumbTip.y - (double)fingerTip.y), 2) + Math.Pow(((double)thumbTip.z - (double)fingerTip.z), 2));
-        //print(fingerDist);
+       
+        // Use Pythag. in 3D to find absolute distance between middle finger and thumb
         float middleFingerPalmDist = (float)Math.Sqrt(Math.Pow(((double)middleFingerTip.x - (double)palmPos.x), 2) + Math.Pow(((double)middleFingerTip.y - (double)palmPos.y), 2) + Math.Pow(((double)middleFingerTip.z - (double)palmPos.z), 2));
-        //print(middleFingerPalmDist);
-        /*
-     if (itr > 5)
-     {
-         float pinchDistSum = 0;
-         for (int i = 0; i < 5; i++)
-         {
-             pinchDistSum += pinchDistHistory[i];
-         }
-         float pinchDistAvg = pinchDistSum / 5;
-         float deltaPinchDist = pinchDistAvg / timeElapsed;
+        
 
-         if ((((fingerDist - pinchDistHistory[(itr) % 5]) / timeElapsed) > (deltaPinchDist - 3)) && (((fingerDist - pinchDistHistory[(itr) % 5]) / timeElapsed) < (deltaPinchDist + 3)))
-         {
-             pinchBool = true;
-             print(pinchBool);
-             print(deltaPinchDist - ((fingerDist - pinchDistHistory[(itr - 1) % 5]) / timeElapsed));
-         }
-         else
-         {
-             pinchBool = false;
-         }
-     }
-     */
-        if ((fingerDist <= 45 || pinchAvg >= 0.8) && middleFingerPalmDist >= 55)  //t_f_x && t_f_y)// && t_f_z)
+        // Code below finds the derivative of distance between middle finger and index finger. If this value sharply increases, the system assumes we are opening our fingers
+        /*
+        if (itr > 5)
+            {
+            float pinchDistSum = 0;
+            for (int i = 0; i < 5; i++)
+            {
+                pinchDistSum += pinchDistHistory[i];
+            }
+            float pinchDistAvg = pinchDistSum / 5;
+            float deltaPinchDist = pinchDistAvg / timeElapsed;
+
+            if ((((fingerDist - pinchDistHistory[(itr) % 5]) / timeElapsed) > (deltaPinchDist - 3)) && (((fingerDist - pinchDistHistory[(itr) % 5]) / timeElapsed) < (deltaPinchDist + 3)))
+            {
+                pinchBool = true;
+                print(pinchBool);
+                print(deltaPinchDist - ((fingerDist - pinchDistHistory[(itr - 1) % 5]) / timeElapsed));
+            }
+            else
+            {
+                pinchBool = false;
+            }
+        }
+        */
+
+
+        // Condition to check if we are using a pinch gesture. We are considered to be pinching when our fingers are close together, or by default if 4/5 of
+        // the last frames had a pinch gesture in them. In order for a pinch gesture to be recognised, the hand must not be clenched into a fist. A fist is formed when
+        // the index finger tip is close to the palm of the hand. 
+        if ((fingerDist <= 45 || pinchAvg >= 0.8) && middleFingerPalmDist >= 55) 
         {
             if (fingerDist <= 45)
             {
@@ -184,16 +196,23 @@ public class Triple_axis_V1 : MonoBehaviour
         }
 
         pinchAvg = (float)(pinchSum / 5);
-
+    	
+        // if middle finger is close to center of palm of hand, label gesture as fist
         if (middleFingerPalmDist < 55)
         {
             gesture = "fist";
         }
-        //print(fingerDist);
+    
         return gesture;
     }
 
+
     // Data normalisation (to slider values) function
+    // Inputs: An array of 3 values, should be in form {x, y, z}
+    // Outputs: Normalised Data value (either with a gain function applied or not applied).
+    // Function: Take input x, y, z values, and normalise them to a range between 0 and 1023- corresponding to the programmable positions along the 
+    // fader sliders.
+
     float[] normalizedData(float[] vals)
     {
         float[] normalized_val = new float[3];
@@ -204,6 +223,8 @@ public class Triple_axis_V1 : MonoBehaviour
         // Set minimum value in interaction box of the motion controller
         if (gainFunction == true)
         {
+            
+            // Code for gain function
             /*
             float gain;
 
@@ -249,57 +270,92 @@ public class Triple_axis_V1 : MonoBehaviour
             }
         */
 
+            // Triple axis version of gain fucntion has not been incorporated yet
             print("Gain Function does not work in this version yet!");
         }
 
         
         else
         {
-            // Set minimum value in interaction box of the motion controller
+            // Set minimum value in interaction box of the motion controller along x, y, and z
+            int[] xyz_max = {120,300,120};
+            int[] xyz_min = {-120,100,-120};
 
             for (int i = 0; i < 3; i++)
             {
-                if (vals[i] > 120)
+                if (vals[i] > xyz_max[i])
                 {
-                    vals[i] = 120;
+                    vals[i] = xyz_max[i];
                 }
 
                 // Max value in interaction box
-                if (vals[i] < -120)
+                if (vals[i] < xyz_min[i])
                 {
-                    vals[i] = -120;
+                    vals[i] = xyz_min[i];
                 }
 
-                if (vals[i] < 0)
+                if ((xyz_max[i] + xyz_min[i]) == 0)
                 {
-                    normalized_val[i] = (float)4.2625 * (120 + vals[i]);
-                    //print(normalized_val);
+                    if (vals[i] < 0)
+                    {
+                        normalized_val[i] = (1023 / ((- xyz_min[i]) * 2)) * (xyz_max[i] + vals[i]);
+                        //print(normalized_val);
+                    }
+
+                    if (vals[i] >= 0)
+                    {
+                        normalized_val[i] = (1023 / ((-xyz_min[i]) * 2)) * vals[i] + (float)511.5;
+                        //print(normalized_val);
+                    }
                 }
 
-                if (vals[i] >= 0)
+                else
                 {
-                    normalized_val[i] = (float)4.2625 * vals[i] + (float)511.5;
-                    //print(normalized_val);
+                    float midPoint = xyz_min[i] + (xyz_max[i] - xyz_min[i])/2;
+                    float gradient = 1023 / ((midPoint - xyz_min[i])*2);
+
+                    if (vals[i] >= midPoint)
+                    {
+                        normalized_val[i] = gradient * (vals[i]-xyz_min[i]);// + (float)511.5;
+                    }
+                    else
+                    {
+                        normalized_val[i] = gradient * (vals[i]- xyz_min[i]);
+                    }
                 }
             }
         }
         return normalized_val;
     }
 
-    // Function to filter the data output
+    /* Function to filter the data output
+     * Inputs: 
+     *  - x_pos: The measured varaiable to which filteration is being applied
+     *  - itr: Iteration variable counting the number of frames unity has run
+     *  - velocity: Calculated instantaneous velocity of the measured value (assuming point is moving in space)
+     *  - x_prior: Last filtered value
+     *  - p_prior: Last covariance variable found.
+     *  - deltaT: The time taken for the last frame to run
+     *  
+     * Outputs:
+     *   - results: An array containing the filtered value at the 0 index, and the covariance value at index 1.
+     *   
+     *  Function:
+     *  Apply Kalman filteration technique to data values.
+     *  
+     * Key Assumptions:
+     * For the predictive step- the Kalman Filter takes the past 11 velocity values, and averages them.
+     * The average velocity value is multiplied by teh time taken for the last iteration of code, and, using the kinematic equation
+     * s = s0 + vt is used to compute the predicted position of the slider (using the last predicted value as s0). 
+     * 
+     * NOTE that as the velocity and position values are taken from the same sensor, the velcoity is prone to noise just
+     * as the position values are. It is for this reason that smoothing is employed on the velocity values.
+     * 
+     * NOTE ALSO in this function xt, x_predict and x_prior are general variables (not necesarily correlated only with the x axis).
+     */
+    
     float[] kalmanFilter(float x_pos, int itr, float[] velocity, float x_prior, float p_prior, float deltaT)
     {
-        /* Key Assumptions:
-         * For the predictive step- the Kalman Filter takes the past 11 velocity values, and averages them.
-         * The average velocity value is multiplied by teh time taken for the last iteration of code, and, using the kinematic equation
-         * s = s0 + vt is used to compute the predicted position of the slider (using the last predicted value as s0). 
-         * 
-         * NOTE that as the velocity and position values are taken from the same sensor, the velcoity is prone to noise just
-         * as the position values are. It is for this reason that smoothing is employed on the velocity values.
-         * 
-         * NOTE in this function xt, x_predict and x_prior are general variables (not necesarily correlated only with the x axis).
-         */
-
         float xt = 0; // Filtered value
         float gain;
         float noiseEst = (float)1;
@@ -313,7 +369,8 @@ public class Triple_axis_V1 : MonoBehaviour
         int arrayMax = 5;
 
 
-        // Predict Stage:
+        // ------------------------------------------------------------------------------Predict Stage-------------------------------------------------------------------------------------
+        // Find predicted value of covariance
         p_predict = p_prior + q;
 
         // Compute moving mean of velocity values
@@ -323,8 +380,10 @@ public class Triple_axis_V1 : MonoBehaviour
         }
         velocityAvg = velocitySum / arrayMax;
 
+        // Predicted smoothed value- using kinematic equation x = x0 + vt
         x_predict = x_prior + (velocityAvg * deltaT);
 
+        // Statements to execute on application initial start up and everytime hands reappear in frame
         if (itr == 0 || hands_out_of_view == true)
         {
             // Guess Initial values for filter initialisation
@@ -336,6 +395,7 @@ public class Triple_axis_V1 : MonoBehaviour
             velocityAvg = (float)0.01;
         }
 
+        // If time taken between frames with hands in them exceeds 20ms, set value to 20ms (as hands likely were removed from frame)
         if (deltaT > 20)
         {
             deltaT = 20;
@@ -347,9 +407,8 @@ public class Triple_axis_V1 : MonoBehaviour
             UnityEngine.Debug.Log("ERROR");
         }
        */
-
-        //print(velocity);
-        // Update Stage:
+      
+        // ----------------------------------------------------------------------------Update Stage----------------------------------------------------------------------------------------
         gain = p_predict / (p_predict + noiseEst);
 
         xt = x_predict + gain * (x_pos - x_predict);
@@ -365,7 +424,19 @@ public class Triple_axis_V1 : MonoBehaviour
         return results;
     }
 
-    // Function to compute the velocity of a point given its present position, past position, and time between measurements
+    /* Function to compute the velocity of a point ALONG AN AXIS given its present position, past position, and time between measurements
+    * Inputs:
+    * - current_pos - Current position in desired axis
+    * - old_pos - Position of point along an axis in the last frame
+    * - timeSpan - Time taken for the program to compute each frame
+    * 
+    * Outputs:
+    * - velocity- Velocity along the desired axis
+    * 
+    * Function:
+    * Computes velocity of a point/body along an axis defined in the Leap Motion Controller
+    */
+
     float velocity(float current_pos, float old_pos, float timeSpan)
     {
         float velocity = 0;
@@ -384,9 +455,8 @@ public class Triple_axis_V1 : MonoBehaviour
     void Start()
     {
         // Define new serial port, and open it for communication
-        asar = new ArduinoSlidesAndRotary.ArduinoReader(COM, 9600);
+        asar = new ArduinoSlidesAndRotary.ArduinoReader(COM, 2000000);
         asar.BeginRead();
-
     }
 
     // Update is called once per frame
@@ -460,12 +530,12 @@ public class Triple_axis_V1 : MonoBehaviour
 
                     index = itr % 5;
 
-                    fingerTipV[index] = velocity(x_axis_index, old_pos_x_index, timeElapsed);
-                    thumbTipV[index] = velocity(x_axis_thumb, old_pos_x_thumb, timeElapsed);
+                    //fingerTipV[index] = velocity(x_axis_index, old_pos_x_index, timeElapsed);
+                    //thumbTipV[index] = velocity(x_axis_thumb, old_pos_x_thumb, timeElapsed);
 
                     // Velcoity of index finger and thumb midpoint
                     indexThumbMidV_X[index] = velocity(midPThumbIndex.x, old_midPThumbIndex.x, timeElapsed);
-                    indexThumbMidV_Y[index] = velocity(midPThumbIndex.x, old_midPThumbIndex.x, timeElapsed);
+                    indexThumbMidV_Y[index] = velocity(midPThumbIndex.y, old_midPThumbIndex.y, timeElapsed);
                     indexThumbMidV_Z[index] = velocity(midPThumbIndex.z, old_midPThumbIndex.z, timeElapsed);
 
                     // Tracking the position of the tip of the index finger in all three dimensions
@@ -527,23 +597,26 @@ public class Triple_axis_V1 : MonoBehaviour
                         old_filtered_x = filtered_x[0];
                         old_p_x_xaxis = filtered_x[1];
                         
-                        filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_x, old_p_x_yaxis, (float)timeElapsed);
+                        filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y, old_p_x_yaxis, (float)timeElapsed);
                         old_filtered_y = filtered_y[0];
                         old_p_x_yaxis = filtered_y[1];
                         
 
                         filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z, old_p_x_zaxis, (float)timeElapsed);
-                        old_filtered_z = filtered_y[0];
-                        old_p_x_zaxis = filtered_y[1];
+                        old_filtered_z = filtered_z[0];
+                        old_p_x_zaxis = filtered_z[1];
+
                         float[] sent_data_array = {filtered_x[0], filtered_y[0], filtered_z[0]};
                         sent_data = normalizedData(sent_data_array);
 
-                        if(midPThumbIndex.x != old_midPThumbIndex.x)
+                        if((midPThumbIndex.x != old_midPThumbIndex.x) || (midPThumbIndex.x == old_midPThumbIndex.x))
                         {
                             try
                             {
-                                asar.SendMessage(2, (int)sent_data[1]);
-                                //print(sent_data);
+                                asar.SendMessage(3, (int)sent_data[0]);
+                                //print("X DATA SENT");
+                                //print((int)sent_data[0]);
+                               // print("                   ");
                             }
                             catch (Exception e)
                             {
@@ -556,8 +629,10 @@ public class Triple_axis_V1 : MonoBehaviour
                         {
                             try
                             {
-                                asar.SendMessage(1, (int)sent_data[2]);
-                                //print(sent_data);
+                                asar.SendMessage(0, (int)sent_data[1]);
+                               // print("Y DATA SENT");
+                               // print((int)sent_data[1]);
+                              //  print("                   ");
                             }
                             catch (Exception e)
                             {
@@ -570,8 +645,10 @@ public class Triple_axis_V1 : MonoBehaviour
                         {
                             try
                             {
-                                asar.SendMessage(3, (int)sent_data[3]);
-                                //print(sent_data);
+                                asar.SendMessage(5, (int)sent_data[2]);
+                              //  print("Z DATA SENT");
+                              //  print((int)sent_data[2]);
+                              //  print("                   ");
                             }
                             catch (Exception e)
                             {
@@ -628,5 +705,6 @@ public class Triple_axis_V1 : MonoBehaviour
                 freeze = true;
             }
         }
+        print(timeElapsed);
     }
 }
