@@ -4,26 +4,25 @@
 ***************************************************************************************
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
- *TO DO (SIDDHANT)/CHANGE LOG:
- * Smoothing of input (Kalman filter) --- DONE --- 2/12/19
- * Only send data if present position is different to previous position --- DONE --- 28/11/19
- * Fix so both hands can be used --- DONE IO EXCEPTION ERROR --- FIXED --- 29/11/19
- * PID in Arduino --- MODIFIED VERSION INCORPORATED --- 2/12/19
- * Restrict amount of data sent through serial port (no unnecessary data sends).
- * Map movement distance of fingers to movement of fader in a 1:1 ratio --- DONE (normalization function altered) --- 2/12/19
- * Gesture Recognition --- Pinch is now registered (index finger and thumb tips pushed together) --- 3/12/2019
- * Gesture Recognition --- Can now terminate gesture tracking by closing fist --- 4/12/2019
- * Gesture Recognition --- Tracking center of hand gesture area
- * Gain Function --- Increase precision the higher you go (min 100 and max 300 due to accuracy issues) --- DRAFTED but not functioning optimally (have to address issues) --- 4/12/2019 
- * Triple axis integration --- DONE --- Faders are jittery- will be fixed when new ones come in/are used
+ * TO DO (SIDDHANT)/CHANGE LOG:
+ * - Smoothing of input (Kalman filter) --- DONE --- 2/12/19
+ * - Only send data if present position is different to previous position --- DONE --- 28/11/19
+ * - Fix so both hands can be used --- DONE IO EXCEPTION ERROR --- FIXED --- 29/11/19
+ * - PID in Arduino --- MODIFIED VERSION INCORPORATED --- 2/12/19
+ * - Restrict amount of data sent through serial port (no unnecessary data sends).
+ * - Map movement distance of fingers to movement of fader in a 1:1 ratio --- DONE (normalization function altered) --- 2/12/19
+ * - Gesture Recognition --- Pinch is now registered (index finger and thumb tips pushed together) --- 3/12/2019
+ * - Gesture Recognition --- Can now terminate gesture tracking by closing fist --- 4/12/2019
+ * - Gesture Recognition --- Tracking center of hand gesture area
+ * - Gain Function --- Increase precision the higher you go (min 100 and max 300 due to accuracy issues) --- DRAFTED but not functioning optimally (have to address issues) --- 4/12/2019 
+ * - Triple axis integration --- DONE --- Faders are jittery- will be fixed when new ones come in/are used
 */
 // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using ArduinoSlidesAndRotary; // Contains asar class
+//using ArduinoSlidesAndRotary; // Contains asar class
 using System;
 using Leap; // Library for interfacing with LEAP motion controller
 using System.Diagnostics; // Contains Stopwatch class
@@ -34,15 +33,10 @@ public class Triple_axis_V1 : MonoBehaviour
     // Add controller object to the program
     Controller controller;
 
-    private bool full_vol = false;
+    private bool full_vol, hands_out_of_view = false;
     private bool interaction_box = true;
-    private bool hands_out_of_view = false;
-    public bool trackFinger = true;
-    public bool trackPalm = false;
-    public bool applyKalmanFiltering = true;
-    public bool freeze = false;
-    public bool gainFunction = false;
-    public bool pinchBool = true;
+    public bool trackFinger, pinchBool, applyKalmanFiltering = true;
+    public bool trackPalm, freeze, gainFunction, toggleHaptics = false;
 
     //InteractionBox interactionBox;
 
@@ -90,7 +84,7 @@ public class Triple_axis_V1 : MonoBehaviour
 
     // Kalman filtered data value
     public float[] filtered_x, filtered_y, filtered_z = new float[2];
-    
+
     public float old_filtered_x, old_filtered_y, old_filtered_z = 10;
 
     public float old_p_x_xaxis, old_p_x_yaxis, old_p_x_zaxis = 10;
@@ -102,9 +96,9 @@ public class Triple_axis_V1 : MonoBehaviour
     public float[] sent_data = new float[3];
     // Create new stopwatch object
     public Stopwatch stopwatch = new Stopwatch();
-   
+
     // Arduino COM Port for Serial Communication
-    public string COM = "COM11";
+    public string COM = "COM3";
 
     // Variable to store gesture type
     public string gesture;
@@ -113,13 +107,14 @@ public class Triple_axis_V1 : MonoBehaviour
     public float[] pinchDistHistory = new float[5];
 
     ArduinoSlidesAndRotary.ArduinoReader asar;
+    ArduinoSlidesAndRotary.HapticsClass haptics;
     //Vector interactionBox;
 
     string gestureRecognition(Vector thumbTip, Vector fingerTip, Vector palmPos, Vector middleFingerTip)
     {
         // String to store selected gesture type
         string gesture = "none";
-        
+
         // Summation of pinch values for calculating the average
         float pinchSum = 0;
 
@@ -137,10 +132,10 @@ public class Triple_axis_V1 : MonoBehaviour
 
         // Find absolute distance between index and middle finger tips- using pythagoras theorem in 3D
         float fingerDist = (float)Math.Sqrt(Math.Pow(((double)thumbTip.x - (double)fingerTip.x), 2) + Math.Pow(((double)thumbTip.y - (double)fingerTip.y), 2) + Math.Pow(((double)thumbTip.z - (double)fingerTip.z), 2));
-       
+
         // Use Pythag. in 3D to find absolute distance between middle finger and thumb
         float middleFingerPalmDist = (float)Math.Sqrt(Math.Pow(((double)middleFingerTip.x - (double)palmPos.x), 2) + Math.Pow(((double)middleFingerTip.y - (double)palmPos.y), 2) + Math.Pow(((double)middleFingerTip.z - (double)palmPos.z), 2));
-        
+
 
         // Code below finds the derivative of distance between middle finger and index finger. If this value sharply increases, the system assumes we are opening our fingers
         /*
@@ -171,7 +166,7 @@ public class Triple_axis_V1 : MonoBehaviour
         // Condition to check if we are using a pinch gesture. We are considered to be pinching when our fingers are close together, or by default if 4/5 of
         // the last frames had a pinch gesture in them. In order for a pinch gesture to be recognised, the hand must not be clenched into a fist. A fist is formed when
         // the index finger tip is close to the palm of the hand. 
-        if ((fingerDist <= 45 || pinchAvg >= 0.8) && middleFingerPalmDist >= 55) 
+        if ((fingerDist <= 45 || pinchAvg >= 0.8) && middleFingerPalmDist >= 55)
         {
             if (fingerDist <= 45)
             {
@@ -196,13 +191,13 @@ public class Triple_axis_V1 : MonoBehaviour
         }
 
         pinchAvg = (float)(pinchSum / 5);
-    	
+
         // if middle finger is close to center of palm of hand, label gesture as fist
         if (middleFingerPalmDist < 55)
         {
             gesture = "fist";
         }
-    
+
         return gesture;
     }
 
@@ -223,7 +218,7 @@ public class Triple_axis_V1 : MonoBehaviour
         // Set minimum value in interaction box of the motion controller
         if (gainFunction == true)
         {
-            
+
             // Code for gain function
             /*
             float gain;
@@ -274,12 +269,13 @@ public class Triple_axis_V1 : MonoBehaviour
             print("Gain Function does not work in this version yet!");
         }
 
-        
+
         else
         {
-            // Set minimum value in interaction box of the motion controller along x, y, and z
-            int[] xyz_max = {120,300,120};
-            int[] xyz_min = {-120,100,-120};
+            // Set minimum value in interaction box of the motion controller along x, y, and z in format {x,y,z}
+            int[] xyz_max = { 120, 300, 100 };
+            // Set maximum value in interaction box of the motion controller along x, y, and z in format {x,y,z}
+            int[] xyz_min = { -120, 100, -100 };
 
             for (int i = 0; i < 3; i++)
             {
@@ -298,7 +294,7 @@ public class Triple_axis_V1 : MonoBehaviour
                 {
                     if (vals[i] < 0)
                     {
-                        normalized_val[i] = (1023 / ((- xyz_min[i]) * 2)) * (xyz_max[i] + vals[i]);
+                        normalized_val[i] = (1023 / ((-xyz_min[i]) * 2)) * (xyz_max[i] + vals[i]);
                         //print(normalized_val);
                     }
 
@@ -311,16 +307,16 @@ public class Triple_axis_V1 : MonoBehaviour
 
                 else
                 {
-                    float midPoint = xyz_min[i] + (xyz_max[i] - xyz_min[i])/2;
-                    float gradient = 1023 / ((midPoint - xyz_min[i])*2);
+                    float midPoint = xyz_min[i] + (xyz_max[i] - xyz_min[i]) / 2;
+                    float gradient = 1023 / ((midPoint - xyz_min[i]) * 2);
 
                     if (vals[i] >= midPoint)
                     {
-                        normalized_val[i] = gradient * (vals[i]-xyz_min[i]);// + (float)511.5;
+                        normalized_val[i] = gradient * (vals[i] - xyz_min[i]);// + (float)511.5;
                     }
                     else
                     {
-                        normalized_val[i] = gradient * (vals[i]- xyz_min[i]);
+                        normalized_val[i] = gradient * (vals[i] - xyz_min[i]);
                     }
                 }
             }
@@ -353,7 +349,7 @@ public class Triple_axis_V1 : MonoBehaviour
      * 
      * NOTE ALSO in this function xt, x_predict and x_prior are general variables (not necesarily correlated only with the x axis).
      */
-    
+
     float[] kalmanFilter(float x_pos, int itr, float[] velocity, float x_prior, float p_prior, float deltaT)
     {
         float xt = 0; // Filtered value
@@ -407,7 +403,7 @@ public class Triple_axis_V1 : MonoBehaviour
             UnityEngine.Debug.Log("ERROR");
         }
        */
-      
+
         // ----------------------------------------------------------------------------Update Stage----------------------------------------------------------------------------------------
         gain = p_predict / (p_predict + noiseEst);
 
@@ -457,6 +453,9 @@ public class Triple_axis_V1 : MonoBehaviour
         // Define new serial port, and open it for communication
         asar = new ArduinoSlidesAndRotary.ArduinoReader(COM, 2000000);
         asar.BeginRead();
+        haptics = new ArduinoSlidesAndRotary.HapticsClass();
+        //haptics = new ArduinoSlidesAndRotary.HapticsClass.haptic();
+        //haptics = new ArduinoSlidesAndRotary.ArduinoReader(COM, 2000000);
     }
 
     // Update is called once per frame
@@ -596,27 +595,27 @@ public class Triple_axis_V1 : MonoBehaviour
                         filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV_X, old_filtered_x, old_p_x_xaxis, (float)timeElapsed);
                         old_filtered_x = filtered_x[0];
                         old_p_x_xaxis = filtered_x[1];
-                        
+
                         filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y, old_p_x_yaxis, (float)timeElapsed);
                         old_filtered_y = filtered_y[0];
                         old_p_x_yaxis = filtered_y[1];
-                        
+
 
                         filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z, old_p_x_zaxis, (float)timeElapsed);
                         old_filtered_z = filtered_z[0];
                         old_p_x_zaxis = filtered_z[1];
 
-                        float[] sent_data_array = {filtered_x[0], filtered_y[0], filtered_z[0]};
+                        float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
                         sent_data = normalizedData(sent_data_array);
 
-                        if((midPThumbIndex.x != old_midPThumbIndex.x) || (midPThumbIndex.x == old_midPThumbIndex.x))
+                        if ((midPThumbIndex.x != old_midPThumbIndex.x) && !toggleHaptics)
                         {
                             try
                             {
                                 asar.SendMessage(3, (int)sent_data[0]);
                                 //print("X DATA SENT");
                                 //print((int)sent_data[0]);
-                               // print("                   ");
+                                // print("                   ");
                             }
                             catch (Exception e)
                             {
@@ -625,14 +624,14 @@ public class Triple_axis_V1 : MonoBehaviour
                             }
                         }
 
-                        if(midPThumbIndex.y != old_midPThumbIndex.y)
+                        if ((midPThumbIndex.y != old_midPThumbIndex.y) && !toggleHaptics)
                         {
                             try
                             {
-                                asar.SendMessage(0, (int)sent_data[1]);
-                               // print("Y DATA SENT");
-                               // print((int)sent_data[1]);
-                              //  print("                   ");
+                                asar.SendMessage(1, (int)sent_data[1]);
+                                // print("Y DATA SENT");
+                                // print((int)sent_data[1]);
+                                //  print("                   ");
                             }
                             catch (Exception e)
                             {
@@ -641,29 +640,86 @@ public class Triple_axis_V1 : MonoBehaviour
                             }
                         }
 
-                        if(midPThumbIndex.z != old_midPThumbIndex.z)
+                        if ((midPThumbIndex.z != old_midPThumbIndex.z) && !toggleHaptics)
                         {
                             try
                             {
                                 asar.SendMessage(5, (int)sent_data[2]);
-                              //  print("Z DATA SENT");
-                              //  print((int)sent_data[2]);
-                              //  print("                   ");
+                                //  print("Z DATA SENT");
+                                //  print((int)sent_data[2]);
+                                //  print("                   ");
                             }
                             catch (Exception e)
                             {
                                 print("EXCEPTION!");
                                 print(e);
                             }
+                        }
+
+                        if (toggleHaptics)
+                        {
+                            haptics.regularStep(5,5,5);
+                            haptics.haptic();
+                            print("Haptics Enabled");
                         }
                     }
                     else
                     {
                         // Normalize data for length of fader axis before sending
-                        float[] sent_data_array = {midPThumbIndex.x , midPThumbIndex.y, midPThumbIndex.z};
+                        float[] sent_data_array = { midPThumbIndex.x, midPThumbIndex.y, midPThumbIndex.z };
                         sent_data = normalizedData(sent_data_array);
-                        //UnityEngine.Debug.Log("Ïn loop");
+                        //UnityEngine.Debug.Log("In loop");
                         //print(sent_data);
+
+                        if (midPThumbIndex.x != old_midPThumbIndex.x)
+                        {
+                            try
+                            {
+                                asar.SendMessage(3, (int)sent_data[0]);
+                                //print("X DATA SENT");
+                                //print((int)sent_data[0]);
+                                // print("                   ");
+                            }
+                            catch (Exception e)
+                            {
+                                print("EXCEPTION!");
+                                print(e);
+                            }
+                        }
+
+                        if (midPThumbIndex.y != old_midPThumbIndex.y)
+                        {
+                            try
+                            {
+                                asar.SendMessage(1, (int)sent_data[1]);
+                                // print("Y DATA SENT");
+                                // print((int)sent_data[1]);
+                                //  print("                   ");
+                            }
+                            catch (Exception e)
+                            {
+                                print("EXCEPTION!");
+                                print(e);
+                            }
+                        }
+
+                        if (midPThumbIndex.z != old_midPThumbIndex.z)
+                        {
+                            try
+                            {
+                                asar.SendMessage(5, (int)sent_data[2]);
+                                //  print("Z DATA SENT");
+                                //  print((int)sent_data[2]);
+                                //  print("                   ");
+                            }
+                            catch (Exception e)
+                            {
+                                print("EXCEPTION!");
+                                print(e);
+                            }
+                        }
+
+
                     }
                 }
             }
@@ -686,13 +742,6 @@ public class Triple_axis_V1 : MonoBehaviour
                 old_p_x_yaxis = 0;
                 hands_out_of_view = true;
             }
-
-            void OnApplicationQuit()
-            {
-                asar.Terminate();
-            }
-
-            itr++;
         }
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -705,6 +754,15 @@ public class Triple_axis_V1 : MonoBehaviour
                 freeze = true;
             }
         }
+        else if (Input.GetKeyDown(KeyCode.E))
+        {
+            asar.Terminate();
+            Application.Quit();
+        }
+        // Print time elapsed between frames to the Unity console
         print(timeElapsed);
+
+        // Iterate variable
+        itr++;
     }
 }
