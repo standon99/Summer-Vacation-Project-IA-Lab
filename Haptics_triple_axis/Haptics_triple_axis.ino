@@ -193,17 +193,18 @@ void fillRegularStep(int nbStepX, int nbStepY, int nbStepZ) {
 }
 //________________________________________________________________________________________________
 void scale(int id) {
+
   if (id == 0 || id == 1) {
     int val = analogRead(slider[id]);
     for (int i = 0; i < indice0 + 1; i++) {
       if (val >= listPos0[i] - (listPos0[i] - listPos0[i - 1]) / 2 && val < listPos0[i] + (listPos0[i + 1] - listPos0[i]) / 2) { //from which integer of listPos the slider the closer
         //go to this position
-        if (val > listPos0[i] + 3) {
+        if (val > listPos0[i] + 2) {
           analogWrite(motorSwitch[id], 255);
           digitalWrite(motorPinPlus[id], HIGH);
           digitalWrite(motorPinMinus[id], LOW);
         }
-        else if (val < listPos0[i] - 3) {
+        else if (val < listPos0[i] - 2) {
           analogWrite(motorSwitch[id], 255);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], HIGH);
@@ -221,12 +222,12 @@ void scale(int id) {
     for (int i = 0; i < indice1 + 1; i++) {
       if (val >= listPos1[i] - (listPos1[i] - listPos1[i - 1]) / 2 && val < listPos1[i] + (listPos1[i + 1] - listPos1[i]) / 2) { //from which integer of listPos the slider the closer
         //go to this position
-        if (val > listPos1[i] + 3) {
+        if (val > listPos1[i] + 2) {
           analogWrite(motorSwitch[id], 255);
           digitalWrite(motorPinPlus[id], HIGH);
           digitalWrite(motorPinMinus[id], LOW);
         }
-        else if (val < listPos1[i] - 3) {
+        else if (val < listPos1[i] - 2) {
           analogWrite(motorSwitch[id], 255);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], HIGH);
@@ -244,12 +245,12 @@ void scale(int id) {
     for (int i = 0; i < indice2 + 1; i++) {
       if (val >= listPos2[i] - (listPos2[i] - listPos2[i - 1]) / 2 && val < listPos2[i] + (listPos2[i + 1] - listPos2[i]) / 2) { //from which integer of listPos the slider the closer
         //go to this position
-        if (val > listPos2[i] + 3) {
+        if (val > listPos2[i] + 2) {
           analogWrite(motorSwitch[id], 255);
           digitalWrite(motorPinPlus[id], HIGH);
           digitalWrite(motorPinMinus[id], LOW);
         }
-        else if (val < listPos2[i] - 3) {
+        else if (val < listPos2[i] - 2) {
           analogWrite(motorSwitch[id], 255);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], HIGH);
@@ -289,7 +290,7 @@ void sliderToVal(int id, int val) {
   {
 
     if (id == 3) {
-      value = abs(pos - val) * 10 + 950;
+      value = abs(pos - val) * 10 + 1000;
     }
     if (id == 1) {
       value = abs(pos - val) * 10 + 850;
@@ -470,6 +471,8 @@ void loop() {
     }
   }
 }
+
+
 //________________________________________________________________________________________________
 void updateEncoder0() {
   int MSB = digitalRead(ROT_A[0]);

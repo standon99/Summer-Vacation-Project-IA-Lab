@@ -15,10 +15,10 @@
  * - Gesture Recognition --- Can now terminate gesture tracking by closing fist --- 4/12/2019
  * - Gesture Recognition --- Tracking center of hand gesture area
  * - Gain Function --- Increase precision the higher you go (min 100 and max 300 due to accuracy issues) --- DRAFTED but not functioning optimally (have to address issues) --- 4/12/2019 
- * - Triple axis integration --- DONE --- Faders are jittery- will be fixed when new ones come in/are used
-*/
-// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ * - Triple axis integration --- DONE --- Faders are slow/a little jittery- will be fixed when new ones come in/are used
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
+#if true // Directive to allow file to stop compiling in Unity- for debugging purposes
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -33,10 +33,10 @@ public class Triple_axis_V1 : MonoBehaviour
     // Add controller object to the program
     Controller controller;
 
-    private bool full_vol, hands_out_of_view = false;
+    private bool full_vol = false, hands_out_of_view = false;
     private bool interaction_box = true;
-    public bool trackFinger, pinchBool, applyKalmanFiltering = true;
-    public bool trackPalm, freeze, gainFunction, toggleHaptics = false;
+    public bool trackFinger = true, pinchBool = true, applyKalmanFiltering = true;
+    public bool trackPalm = false, freeze = false, gainFunction = false, toggleHaptics = false;
 
     //InteractionBox interactionBox;
 
@@ -55,7 +55,7 @@ public class Triple_axis_V1 : MonoBehaviour
 
     // Velocity for trackable objects ALONG X AXIS ONLY
     private Vector handCenterV;
-    private float[] fingerTipV, thumbTipV, indexThumbMidV_X, indexThumbMidV_Y, indexThumbMidV_Z = new float[5];
+    private float[] fingerTipV = new float[5], thumbTipV = new float[5], indexThumbMidV_X = new float[5], indexThumbMidV_Y = new float[5], indexThumbMidV_Z = new float[5];
     private float oldFingerTipV;
     private float oldThumbTipV;
 
@@ -65,7 +65,7 @@ public class Triple_axis_V1 : MonoBehaviour
 
     // Along x axis of LEAP motion module
     //public int[] pos_x;
-    public float x_axis_index, x_axis_thumb = 0;
+    public float x_axis_index = 0, x_axis_thumb = 0;
     public float old_pos_x_index, old_pos_x_thumb;
 
     // Vertical axis from LEAP motion module
@@ -83,11 +83,12 @@ public class Triple_axis_V1 : MonoBehaviour
     public float old_pos_z_thumb;
 
     // Kalman filtered data value
-    public float[] filtered_x, filtered_y, filtered_z = new float[2];
+    public float[] filtered_x = new float[2], filtered_y = new float[2], filtered_z = new float[2];
 
-    public float old_filtered_x, old_filtered_y, old_filtered_z = 10;
+    public float old_filtered_x = 10, old_filtered_y = 10, old_filtered_z = 10;
 
-    public float old_p_x_xaxis, old_p_x_yaxis, old_p_x_zaxis = 10;
+    public float old_p_x_xaxis = 10, old_p_x_yaxis = 10, old_p_x_zaxis = 10;
+    
 
     // Vertical axis from LEAP motion module
     // public int pos_y;
@@ -106,8 +107,8 @@ public class Triple_axis_V1 : MonoBehaviour
     public float pinchAvg = 0;
     public float[] pinchDistHistory = new float[5];
 
-    ArduinoSlidesAndRotary.ArduinoReader asar;
-    ArduinoSlidesAndRotary.HapticsClass haptics;
+    ArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
+    ArduinoSlidesAndRotary.ArduinoReaderHaptics haptics;
     //Vector interactionBox;
 
     string gestureRecognition(Vector thumbTip, Vector fingerTip, Vector palmPos, Vector middleFingerTip)
@@ -214,7 +215,7 @@ public class Triple_axis_V1 : MonoBehaviour
         float x_val, y_val, z_val;
         x_val = vals[0];
         y_val = vals[1];
-        z_val = vals[0];
+        z_val = vals[2];
         // Set minimum value in interaction box of the motion controller
         if (gainFunction == true)
         {
@@ -357,7 +358,7 @@ public class Triple_axis_V1 : MonoBehaviour
         float noiseEst = (float)1;
         float[] results = new float[3];
         float x_predict;
-        float q = (float)0.3; // Reflects confidence in the model used (lower means more accurate)
+        float q = (float)0.35; // Reflects confidence in the model used (lower means more accurate)
         float p_predict;
         float pt;
         float velocityAvg = 0;
@@ -392,7 +393,7 @@ public class Triple_axis_V1 : MonoBehaviour
         }
 
         // If time taken between frames with hands in them exceeds 20ms, set value to 20ms (as hands likely were removed from frame)
-        if (deltaT > 20)
+        if (deltaT > 25)
         {
             deltaT = 20;
         }
@@ -417,6 +418,7 @@ public class Triple_axis_V1 : MonoBehaviour
         // Results array with filtered value at first index and covariant matrix value (pt) in second position
         results[0] = xt;
         results[1] = pt;
+        //print(pt);
         return results;
     }
 
@@ -451,9 +453,10 @@ public class Triple_axis_V1 : MonoBehaviour
     void Start()
     {
         // Define new serial port, and open it for communication
-        asar = new ArduinoSlidesAndRotary.ArduinoReader(COM, 2000000);
+        asar = new ArduinoSlidesAndRotary.ArduinoReaderHaptics();
+        asar.ArduinoReader(COM, 2000000);
         asar.BeginRead();
-        haptics = new ArduinoSlidesAndRotary.HapticsClass();
+        haptics = new ArduinoSlidesAndRotary.ArduinoReaderHaptics();
         //haptics = new ArduinoSlidesAndRotary.HapticsClass.haptic();
         //haptics = new ArduinoSlidesAndRotary.ArduinoReader(COM, 2000000);
     }
@@ -591,19 +594,21 @@ public class Triple_axis_V1 : MonoBehaviour
                         old_p_x= filtered_x[1];
                         sent_data = normalizedData(filtered_x[0]);
                         */
-
+                        
                         filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV_X, old_filtered_x, old_p_x_xaxis, (float)timeElapsed);
                         old_filtered_x = filtered_x[0];
                         old_p_x_xaxis = filtered_x[1];
+                        //print(filtered_x[1]);
 
                         filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y, old_p_x_yaxis, (float)timeElapsed);
                         old_filtered_y = filtered_y[0];
                         old_p_x_yaxis = filtered_y[1];
-
+                        //print(filtered_y[1]);
 
                         filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z, old_p_x_zaxis, (float)timeElapsed);
                         old_filtered_z = filtered_z[0];
                         old_p_x_zaxis = filtered_z[1];
+                        //print(filtered_z[1]);
 
                         float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
                         sent_data = normalizedData(sent_data_array);
@@ -659,8 +664,11 @@ public class Triple_axis_V1 : MonoBehaviour
                         if (toggleHaptics)
                         {
                             haptics.regularStep(5,5,5);
-                            haptics.haptic();
+                            //haptics.haptic();
                             print("Haptics Enabled");
+                            //asar.SendMessage(3, (int)sent_data[0]);
+                            //asar.SendMessage(1, (int)sent_data[1]);
+                            //asar.SendMessage(5, (int)sent_data[2]);
                         }
                     }
                     else
@@ -728,18 +736,20 @@ public class Triple_axis_V1 : MonoBehaviour
                 // Empty arrays used in Kalman filter once hands are removed from the frame
                 filtered_x = new float[2];
                 filtered_y = new float[2];
+                filtered_z = new float[2];
                 fingerTipV = new float[5];
                 thumbTipV = new float[5];
 
                 indexThumbMidV_X = new float[5];
                 indexThumbMidV_Y = new float[5];
+                indexThumbMidV_Z = new float[5];
 
                 // Ensure time elapsed doesnt keep growing (could cause the posiiton prediction in the Kalman function to be inflated)
                 timeElapsed = 0;
-                old_filtered_x = 0;
-                old_filtered_y = 0;
-                old_p_x_xaxis = 0;
-                old_p_x_yaxis = 0;
+                //old_filtered_x = 0;
+                //old_filtered_y = 0;
+                //old_p_x_xaxis = 0;
+                //old_p_x_yaxis = 0;
                 hands_out_of_view = true;
             }
         }
@@ -760,9 +770,10 @@ public class Triple_axis_V1 : MonoBehaviour
             Application.Quit();
         }
         // Print time elapsed between frames to the Unity console
-        print(timeElapsed);
+        //print(timeElapsed);
 
         // Iterate variable
         itr++;
     }
 }
+#endif
