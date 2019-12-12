@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 const int nbSlider = 6;
-const int numReadings = 10;
+const int numReadings = 20;
 int readIndex = 0;
 int tabPos[nbSlider][numReadings];
 float pos[nbSlider];
@@ -14,7 +14,7 @@ int ROT_B[nbAxe] = {21, 3, 19};
 int ROT_A[nbAxe] = {20, 2, 18};
 int buttonSwitch[nbAxe] = {17, 10, 22};
 const float minForce = 256;
-const float maxForce = 8;
+const float maxForce = 10;
 const int resolution = minForce;
 const int maxStep = maxForce;
 float listPosf0[resolution + 1];
@@ -24,9 +24,12 @@ int listPos1[resolution + 1];
 float listPosf2[resolution + 1];
 int listPos2[resolution + 1];
 const int nbData = maxForce;
-float data0[nbData] = {0, 10, 0, 10, 0, 10, 0, 10};//{0, 1, 2, 3, 4, 4, 4, 4};
-float data1[nbData] = {0, 10, 0, 10, 0, 10, 0, 10}; // 10 replaced 4
-float data2[nbData] = {0, 10, 0, 10, 0, 10, 0, 10};//{0, 1, 2, 3, 4, 2, 1, 0};
+//float data0[nbData] = {3, 6, 9, 12, 15, 18, 21, 60, 63, 66, 69, 72, 75, 78, 81};
+//float data1[nbData] = {3, 6, 9, 12, 15, 18, 21, 60, 63, 66, 69, 72, 75, 78, 81};
+//float data2[nbData] =  {3, 6, 9, 12, 15, 18, 21, 60, 63, 66, 69, 72, 75, 78, 81};
+float data0[nbData] = {0, 1, 2, 3, 4, 4, 4, 0,0,4};
+float data1[nbData] = {0, 4, 0, 4, 0, 4, 0, 4, 0,0}; // 10 replaced 4
+float data2[nbData] = {0, 1, 2, 3, 4, 4, 4, 2, 1, 0};
 float minData;
 float maxData;
 int indice0, indice1, indice2 = 0;
@@ -197,24 +200,20 @@ void fillRegularStep(int nbStepX, int nbStepY, int nbStepZ) {
 //________________________________________________________________________________________________
 void scale(int id) {
   int value;
-
+  int sUncert = 60;
+  int scale = 50;
   if (id == 0 || id == 1) {
     int val = analogRead(slider[id]);
-
-    if (id == 0 || id == 1)
-    {
-      value = 1023;
-    }
-
     for (int i = 0; i < indice0 + 1; i++) {
+      value = 1023 - (scale * data0[i]);
       if (val >= listPos0[i] - (listPos0[i] - listPos0[i - 1]) / 2 && val < listPos0[i] + (listPos0[i + 1] - listPos0[i]) / 2) { //from which integer of listPos the slider the closer
         //go to this position
-        if (val > listPos0[i] + 60) {
+        if (val > listPos0[i] + sUncert) {
           analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], HIGH);
           digitalWrite(motorPinMinus[id], LOW);
         }
-        else if (val < listPos0[i] - 60) {
+        else if (val < listPos0[i] - sUncert) {
           analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], HIGH);
@@ -229,27 +228,22 @@ void scale(int id) {
   }
   else if (id == 2 || id == 3) {
     int val = analogRead(slider[id]);
-
-    if (id == 2 || id == 3)
-    {
-      value = 1023;
-    }
-
     for (int i = 0; i < indice1 + 1; i++) {
+      value = 1023 - (scale * data0[i]);
       if (val >= listPos1[i] - (listPos1[i] - listPos1[i - 1]) / 2 && val < listPos1[i] + (listPos1[i + 1] - listPos1[i]) / 2) { //from which integer of listPos the slider the closer
         //go to this position
-        if (val > listPos1[i] + 60) {
-          digitalWrite(motorSwitch[id], HIGH);
+        if (val > listPos1[i] + sUncert) {
+          analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], HIGH);
           digitalWrite(motorPinMinus[id], LOW);
         }
-        else if (val < listPos1[i] - 60) {
-          digitalWrite(motorSwitch[id], HIGH);
+        else if (val < listPos1[i] - sUncert) {
+          analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], HIGH);
         }
         else {
-          digitalWrite(motorSwitch[id], LOW);
+          analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], LOW);
         }
@@ -258,27 +252,23 @@ void scale(int id) {
   }
   else if (id == 4 || id == 5) {
     int val = analogRead(slider[id]);
-
-    if (id == 4 || id == 5)
-    {
-      value = 1023;
-    }
-
+    
     for (int i = 0; i < indice2 + 1; i++) {
+      value = 1023 - (scale * data0[i]);
       if (val >= listPos2[i] - (listPos2[i] - listPos2[i - 1]) / 2 && val < listPos2[i] + (listPos2[i + 1] - listPos2[i]) / 2) { //from which integer of listPos the slider the closer
         //go to this position
-        if (val > listPos2[i] + 60) {
-          digitalWrite(motorSwitch[id], HIGH);
+        if (val > listPos2[i] + sUncert) {
+          analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], HIGH);
           digitalWrite(motorPinMinus[id], LOW);
         }
-        else if (val < listPos2[i] - 60) {
-          digitalWrite(motorSwitch[id], HIGH);
+        else if (val < listPos2[i] - sUncert) {
+          analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], HIGH);
         }
         else {
-          digitalWrite(motorSwitch[id], LOW);
+          analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], LOW);
         }
@@ -308,7 +298,7 @@ void follow(int followedSlider, int followingSlider, int dist) {
 void sliderToVal(int id, int val) {
   int pos = analogRead(slider[id]);
   int value;
-  if (abs(pos - val) > 2)
+  if (abs(pos - val) > 4)
   {
     if (id == 3 || id == 4) {
       value = abs(pos - val) * 10 + 1000;

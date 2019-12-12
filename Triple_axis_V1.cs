@@ -15,7 +15,7 @@
  * - Gesture Recognition --- Can now terminate gesture tracking by closing fist --- 4/12/2019
  * - Gesture Recognition --- Tracking center of hand gesture area
  * - Gain Function --- Increase precision the higher you go (min 100 and max 300 due to accuracy issues) --- DRAFTED but not functioning optimally (have to address issues) --- 4/12/2019 
- * - Triple axis integration --- DONE --- Faders are slow/a little jittery- will be fixed when new ones come in/are used
+ * - Triple axis integration --- DONE --- Faders are slow/jittery- will be fixed when new ones come in/are used
 // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 #if true // Directive to allow file to stop compiling in Unity- for debugging purposes
@@ -36,11 +36,11 @@ public class Triple_axis_V1 : MonoBehaviour
     private bool full_vol = false, hands_out_of_view = false;
     private bool interaction_box = true;
     public bool trackFinger = true, pinchBool = true, applyKalmanFiltering = true;
-    public bool trackPalm = false, freeze = false, gainFunction = false, toggleHaptics = false;
+    public bool trackPalm = false, freeze = false, gainFunction = false, toggleHaptics = false, discretizeAxes = false, hapticTracking = true;
 
     //InteractionBox interactionBox;
 
-    public int itr = 0;
+    public int itr = 0, xSteps = 4, ySteps = 4, zSteps = 4;
 
     int xNMinusOne;
     int xN;
@@ -55,7 +55,9 @@ public class Triple_axis_V1 : MonoBehaviour
 
     // Velocity for trackable objects ALONG X AXIS ONLY
     private Vector handCenterV;
-    private float[] fingerTipV = new float[5], thumbTipV = new float[5], indexThumbMidV_X = new float[5], indexThumbMidV_Y = new float[5], indexThumbMidV_Z = new float[5];
+    private float old_pos_x_hand;
+    private float x_axis_hand;
+    private float[] fingerTipV_x = new float[5], fingerTipV_z = new float[5], fingerTipV_y = new float[5], thumbTipV = new float[5], indexThumbMidV_X = new float[5], indexThumbMidV_Y = new float[5], indexThumbMidV_Z = new float[5];
     private float oldFingerTipV;
     private float oldThumbTipV;
 
@@ -108,10 +110,10 @@ public class Triple_axis_V1 : MonoBehaviour
     public float[] pinchDistHistory = new float[5];
 
     ArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
-    ArduinoSlidesAndRotary.ArduinoReaderHaptics haptics;
+    
     //Vector interactionBox;
 
-    string gestureRecognition(Vector thumbTip, Vector fingerTip, Vector palmPos, Vector middleFingerTip)
+    string gestureRecognition(Vector thumbTip, Vector fingerTip, Vector palmPos, Vector middleFingerTip, Finger finger)
     {
         // String to store selected gesture type
         string gesture = "none";
@@ -137,7 +139,15 @@ public class Triple_axis_V1 : MonoBehaviour
         // Use Pythag. in 3D to find absolute distance between middle finger and thumb
         float middleFingerPalmDist = (float)Math.Sqrt(Math.Pow(((double)middleFingerTip.x - (double)palmPos.x), 2) + Math.Pow(((double)middleFingerTip.y - (double)palmPos.y), 2) + Math.Pow(((double)middleFingerTip.z - (double)palmPos.z), 2));
 
+        // Use Pythag. in 3D to find absolute distance between middle finger and thumb
+        float indexFingerPalmDist = (float)Math.Sqrt(Math.Pow(((double)fingerTip.x - (double)palmPos.x), 2) + Math.Pow(((double)fingerTip.y - (double)palmPos.y), 2) + Math.Pow(((double)fingerTip.z - (double)palmPos.z), 2));
 
+        Vector indexFingerDir = finger.Direction;
+        bool xPoint = false, yPoint = false, zPoint = false; ;
+        if (Math.Abs(indexFingerDir.x) > 0.94 && Math.Abs(indexFingerDir.x) < 1.04) xPoint = true;
+        if (Math.Abs(indexFingerDir.y) > 0.94 && Math.Abs(indexFingerDir.y) < 1.04) yPoint = true;
+        if (Math.Abs(indexFingerDir.z) > 0.94 && Math.Abs(indexFingerDir.z) < 1.04) zPoint = true;
+        print(indexFingerDir);
         // Code below finds the derivative of distance between middle finger and index finger. If this value sharply increases, the system assumes we are opening our fingers
         /*
         if (itr > 5)
@@ -167,7 +177,7 @@ public class Triple_axis_V1 : MonoBehaviour
         // Condition to check if we are using a pinch gesture. We are considered to be pinching when our fingers are close together, or by default if 4/5 of
         // the last frames had a pinch gesture in them. In order for a pinch gesture to be recognised, the hand must not be clenched into a fist. A fist is formed when
         // the index finger tip is close to the palm of the hand. 
-        if ((fingerDist <= 45 || pinchAvg >= 0.8) && middleFingerPalmDist >= 55)
+        if ((fingerDist <= 45 || pinchAvg >= 0.8) && middleFingerPalmDist >= 55 && indexFingerPalmDist >= 55)
         {
             if (fingerDist <= 45)
             {
@@ -194,11 +204,22 @@ public class Triple_axis_V1 : MonoBehaviour
         pinchAvg = (float)(pinchSum / 5);
 
         // if middle finger is close to center of palm of hand, label gesture as fist
-        if (middleFingerPalmDist < 55)
+        if (middleFingerPalmDist < 55 && indexFingerPalmDist < 55)
         {
             gesture = "fist";
         }
-
+        else if (middleFingerPalmDist < 55 && indexFingerPalmDist < 55 && zPoint && !(xPoint || yPoint))
+        {
+            gesture = "z point";
+        }
+        else if (middleFingerPalmDist < 55 && indexFingerPalmDist < 55 && yPoint && !(xPoint || zPoint))
+        {
+            gesture = "y point";
+        }
+        else if (middleFingerPalmDist < 55 && indexFingerPalmDist < 55 && xPoint && !(yPoint || zPoint))
+        {
+            gesture = "x point";
+        }
         return gesture;
     }
 
@@ -266,7 +287,7 @@ public class Triple_axis_V1 : MonoBehaviour
             }
         */
 
-            // Triple axis version of gain fucntion has not been incorporated yet
+            // Triple axis version of gain function has not been incorporated yet
             print("Gain Function does not work in this version yet!");
         }
 
@@ -456,7 +477,6 @@ public class Triple_axis_V1 : MonoBehaviour
         asar = new ArduinoSlidesAndRotary.ArduinoReaderHaptics();
         asar.ArduinoReader(COM, 2000000);
         asar.BeginRead();
-        haptics = new ArduinoSlidesAndRotary.ArduinoReaderHaptics();
         //haptics = new ArduinoSlidesAndRotary.HapticsClass.haptic();
         //haptics = new ArduinoSlidesAndRotary.ArduinoReader(COM, 2000000);
     }
@@ -466,6 +486,23 @@ public class Triple_axis_V1 : MonoBehaviour
     {
         if (freeze == false)
         {
+            if (toggleHaptics)
+            {
+                if (discretizeAxes == false)
+                {
+                    //asar.regularStep(0, 0, 0);
+                    asar.haptic();
+                }
+                else if (discretizeAxes)
+                {
+                    asar.regularStep(xSteps, ySteps, zSteps);
+                }
+            }
+            else
+            {
+                discretizeAxes = false;
+            }
+
             if (trackFinger)
             {
                 // If tracking finger (default) disable palm tracking
@@ -489,9 +526,10 @@ public class Triple_axis_V1 : MonoBehaviour
 
                 if (trackFinger)
                 {
+                    // Halt previous stop watch run
                     stopwatch.Stop();
-                    timeElapsed = (int)stopwatch.ElapsedMilliseconds;
-                    stopwatch.Reset();
+                    timeElapsed = (int)stopwatch.ElapsedMilliseconds; // Record time between frames
+                    stopwatch.Reset(); // Reset stopwatch function
                     // print(timeElapsed);
                     List<Finger> fingers = firstHand.Fingers;
 
@@ -519,7 +557,6 @@ public class Triple_axis_V1 : MonoBehaviour
 
                     // Find modpoint between ___ Joint of thumb and ___ joint of index finger
 
-                    //print("NEXT");
                     midPThumbIndex.x = ((thumbJoint.x + indexJoint.x) / 2);
                     //print(midPThumbIndex.x);
                     midPThumbIndex.y = ((thumbJoint.y + indexJoint.y) / 2);
@@ -528,11 +565,12 @@ public class Triple_axis_V1 : MonoBehaviour
                     //print(midPThumbIndex.z);
 
                     // Call function to compute the velocity of finger tips
-                    //print(itr % 11);
+                    fingerTipV_x[index] = velocity(x_axis_index, old_pos_x_index, timeElapsed);
+                    fingerTipV_y[index] = velocity(x_axis_index, old_pos_x_index, timeElapsed);
+                    fingerTipV_z[index] = velocity(x_axis_index, old_pos_x_index, timeElapsed);
 
                     index = itr % 5;
 
-                    //fingerTipV[index] = velocity(x_axis_index, old_pos_x_index, timeElapsed);
                     //thumbTipV[index] = velocity(x_axis_thumb, old_pos_x_thumb, timeElapsed);
 
                     // Velcoity of index finger and thumb midpoint
@@ -563,16 +601,18 @@ public class Triple_axis_V1 : MonoBehaviour
                     // Find position of the palm of the hand 
                     handCenter = firstHand.PalmPosition;
 
-                    gesture = gestureRecognition(thumbTip, fingerTip, handCenter, middleFingerTip);
+                    // Run gesture recognition fucntion to identify gesture in the frame
+                    gesture = gestureRecognition(thumbTip, fingerTip, handCenter, middleFingerTip, indexFinger);
                     if (gesture == "pinch")
                     {
                         UnityEngine.Debug.Log("Pinch Activated");
                     }
-                    // If finger tracking is active, thumb tracking should be inactivated
+                    
+                    // If finger tracking is active, palm tracking should be inactivated
                     trackPalm = false;
                 }
 
-                /*
+                
                 if (trackPalm)
                 {
                     // Tracking palm of hand
@@ -580,7 +620,7 @@ public class Triple_axis_V1 : MonoBehaviour
                     old_pos_x_hand = x_axis_index;
                     x_axis_hand = handCenter.x;
                 }
-                */
+                
 
                 if (gesture == "pinch") // x_axis_index > (old_pos_x_index + 10) || x_axis_index < (old_pos_x_index - 10)
                 {
@@ -610,7 +650,7 @@ public class Triple_axis_V1 : MonoBehaviour
                         old_p_x_zaxis = filtered_z[1];
                         //print(filtered_z[1]);
 
-                        float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
+                        float[] sent_data_array = {filtered_x[0], filtered_y[0], filtered_z[0]};
                         sent_data = normalizedData(sent_data_array);
 
                         if ((midPThumbIndex.x != old_midPThumbIndex.x) && !toggleHaptics)
@@ -663,12 +703,134 @@ public class Triple_axis_V1 : MonoBehaviour
 
                         if (toggleHaptics)
                         {
-                            haptics.regularStep(5,5,5);
-                            //haptics.haptic();
                             print("Haptics Enabled");
-                            //asar.SendMessage(3, (int)sent_data[0]);
-                            //asar.SendMessage(1, (int)sent_data[1]);
-                            //asar.SendMessage(5, (int)sent_data[2]);
+                            if ((discretizeAxes == false) & (hapticTracking == true))
+                            {
+                                asar.SendMessage(3, (int)sent_data[0]);
+                                asar.haptic();
+                                asar.SendMessage(1, (int)sent_data[1]);
+                                asar.haptic();
+                                asar.SendMessage(5, (int)sent_data[2]);
+                                asar.haptic();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Normalize data for length of fader axis before sending
+                        float[] sent_data_array = { midPThumbIndex.x, midPThumbIndex.y, midPThumbIndex.z };
+                        sent_data = normalizedData(sent_data_array);
+                        //UnityEngine.Debug.Log("In loop");
+                        //print(sent_data);
+
+                        if (midPThumbIndex.x != old_midPThumbIndex.x)
+                        {
+                            try
+                            {
+                                asar.SendMessage(3, (int)sent_data[0]);
+                                //print("X DATA SENT");
+                                //print((int)sent_data[0]);
+                                // print("                   ");
+                            }
+                            catch (Exception e)
+                            {
+                                print("EXCEPTION!");
+                                print(e);
+                            }
+                        }
+
+                        if (midPThumbIndex.y != old_midPThumbIndex.y)
+                        {
+                            try
+                            {
+                                asar.SendMessage(1, (int)sent_data[1]);
+                                // print("Y DATA SENT");
+                                // print((int)sent_data[1]);
+                                //  print("                   ");
+                            }
+                            catch (Exception e)
+                            {
+                                print("EXCEPTION!");
+                                print(e);
+                            }
+                        }
+
+                        if (midPThumbIndex.z != old_midPThumbIndex.z)
+                        {
+                            try
+                            {
+                                asar.SendMessage(5, (int)sent_data[2]);
+                                //  print("Z DATA SENT");
+                                //  print((int)sent_data[2]);
+                                //  print("                   ");
+                            }
+                            catch (Exception e)
+                            {
+                                print("EXCEPTION!");
+                                print(e);
+                            }
+                        }
+                    }
+                }
+                else if (gesture == "x point")
+                {
+                    if (applyKalmanFiltering)
+                    {
+                        filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV_X, old_filtered_x, old_p_x_xaxis, (float)timeElapsed);
+                        old_filtered_x = filtered_x[0];
+                        old_p_x_xaxis = filtered_x[1];
+                        //print(filtered_x[1]);
+
+                        filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y, old_p_x_yaxis, (float)timeElapsed);
+                        old_filtered_y = filtered_y[0];
+                        old_p_x_yaxis = filtered_y[1];
+                        //print(filtered_y[1]);
+
+                        filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z, old_p_x_zaxis, (float)timeElapsed);
+                        old_filtered_z = filtered_z[0];
+                        old_p_x_zaxis = filtered_z[1];
+                        //print(filtered_z[1]);
+
+                        float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
+                        sent_data = normalizedData(sent_data_array);
+
+                        if ((midPThumbIndex.x != old_midPThumbIndex.x) && !toggleHaptics)
+                        {
+                            try
+                            {
+                                asar.SendMessage(3, (int)sent_data[0]);
+                            }
+                            catch (Exception e)
+                            {
+                                print("EXCEPTION!");
+                                print(e);
+                            }
+                        }
+
+                        if ((midPThumbIndex.y != old_midPThumbIndex.y) && !toggleHaptics)
+                        {
+                            try
+                            {
+                                asar.SendMessage(1, (int)sent_data[1]);
+                            }
+                            catch (Exception e)
+                            {
+                                print("EXCEPTION!");
+                                print(e);
+                            }
+                        }
+
+                        if ((midPThumbIndex.z != old_midPThumbIndex.z) && !toggleHaptics)
+                        {
+                            try
+                            {
+                                asar.SendMessage(5, (int)sent_data[2]);
+                            }
+                            catch (Exception e)
+                            {
+                                print("EXCEPTION!");
+                                print(e);
+                            }
                         }
                     }
                     else
@@ -737,7 +899,9 @@ public class Triple_axis_V1 : MonoBehaviour
                 filtered_x = new float[2];
                 filtered_y = new float[2];
                 filtered_z = new float[2];
-                fingerTipV = new float[5];
+                fingerTipV_x = new float[5];
+                fingerTipV_y = new float[5];
+                fingerTipV_z = new float[5];
                 thumbTipV = new float[5];
 
                 indexThumbMidV_X = new float[5];
@@ -746,10 +910,10 @@ public class Triple_axis_V1 : MonoBehaviour
 
                 // Ensure time elapsed doesnt keep growing (could cause the posiiton prediction in the Kalman function to be inflated)
                 timeElapsed = 0;
-                //old_filtered_x = 0;
-                //old_filtered_y = 0;
-                //old_p_x_xaxis = 0;
-                //old_p_x_yaxis = 0;
+                old_filtered_x = 0;
+                old_filtered_y = 0;
+                old_p_x_xaxis = 0;
+                old_p_x_yaxis = 0;
                 hands_out_of_view = true;
             }
         }
@@ -764,16 +928,20 @@ public class Triple_axis_V1 : MonoBehaviour
                 freeze = true;
             }
         }
-        else if (Input.GetKeyDown(KeyCode.E))
-        {
-            asar.Terminate();
-            Application.Quit();
-        }
+
         // Print time elapsed between frames to the Unity console
         //print(timeElapsed);
 
         // Iterate variable
         itr++;
+
+        // Terminate serial communication if 'E' is pressed by the user in play mode
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            asar.Terminate();
+            Application.Quit();
+        }
     }
 }
+
 #endif
