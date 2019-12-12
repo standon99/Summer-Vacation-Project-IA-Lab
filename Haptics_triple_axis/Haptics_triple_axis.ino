@@ -24,9 +24,9 @@ int listPos1[resolution + 1];
 float listPosf2[resolution + 1];
 int listPos2[resolution + 1];
 const int nbData = maxForce;
-float data0[nbData] = {0, 1, 2, 3, 4, 4, 4, 4};
-float data1[nbData] = {0, 4, 0, 4, 0, 4, 0, 4};
-float data2[nbData] = {0, 1, 2, 3, 4, 2, 1, 0};
+float data0[nbData] = {0, 10, 0, 10, 0, 10, 0, 10};//{0, 1, 2, 3, 4, 4, 4, 4};
+float data1[nbData] = {0, 10, 0, 10, 0, 10, 0, 10}; // 10 replaced 4
+float data2[nbData] = {0, 10, 0, 10, 0, 10, 0, 10};//{0, 1, 2, 3, 4, 2, 1, 0};
 float minData;
 float maxData;
 int indice0, indice1, indice2 = 0;
@@ -66,13 +66,16 @@ void setup() {
 
 
 
-  for (int i = 0; i < nbSlider; i++) {
+  for (int i = 0; i < nbSlider; i++)
+  {
     pinMode(slider[i], INPUT);
     pinMode(motorSwitch[i], OUTPUT);
     pinMode(motorPinPlus[i], OUTPUT);
     pinMode(motorPinMinus[i], OUTPUT);
   }
-  for (int i = 0; i < nbAxe; i++) {
+
+  for (int i = 0; i < nbAxe; i++)
+  {
     pinMode(ROT_B[i], INPUT);
     pinMode(ROT_A[i], INPUT);
     pinMode(buttonSwitch[i], INPUT);
@@ -80,12 +83,12 @@ void setup() {
     digitalWrite(ROT_A[i], HIGH);
     digitalWrite(buttonSwitch[i], HIGH);
   }
-  attachInterrupt(0, updateEncoder1, CHANGE);
-  attachInterrupt(1, updateEncoder1, CHANGE);
-  attachInterrupt(4, updateEncoder2, CHANGE);
-  attachInterrupt(5, updateEncoder2, CHANGE);
-  attachInterrupt(2, updateEncoder0, CHANGE);
-  attachInterrupt(3, updateEncoder0, CHANGE);
+  //attachInterrupt(0, updateEncoder1, CHANGE);
+  //attachInterrupt(1, updateEncoder1, CHANGE);
+  // attachInterrupt(4, updateEncoder2, CHANGE);
+  // attachInterrupt(5, updateEncoder2, CHANGE);
+  // attachInterrupt(2, updateEncoder0, CHANGE);
+  // attachInterrupt(3, updateEncoder0, CHANGE);
 }
 //________________________________________________________________________________________________
 void fillStep(int axe, float currentForce) {
@@ -193,24 +196,31 @@ void fillRegularStep(int nbStepX, int nbStepY, int nbStepZ) {
 }
 //________________________________________________________________________________________________
 void scale(int id) {
+  int value;
 
   if (id == 0 || id == 1) {
     int val = analogRead(slider[id]);
+
+    if (id == 0 || id == 1)
+    {
+      value = 1023;
+    }
+
     for (int i = 0; i < indice0 + 1; i++) {
       if (val >= listPos0[i] - (listPos0[i] - listPos0[i - 1]) / 2 && val < listPos0[i] + (listPos0[i + 1] - listPos0[i]) / 2) { //from which integer of listPos the slider the closer
         //go to this position
-        if (val > listPos0[i] + 2) {
-          analogWrite(motorSwitch[id], 255);
+        if (val > listPos0[i] + 60) {
+          analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], HIGH);
           digitalWrite(motorPinMinus[id], LOW);
         }
-        else if (val < listPos0[i] - 2) {
-          analogWrite(motorSwitch[id], 255);
+        else if (val < listPos0[i] - 60) {
+          analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], HIGH);
         }
         else {
-          analogWrite(motorSwitch[id], 0);
+          analogWrite(motorSwitch[id], value);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], LOW);
         }
@@ -219,21 +229,27 @@ void scale(int id) {
   }
   else if (id == 2 || id == 3) {
     int val = analogRead(slider[id]);
+
+    if (id == 2 || id == 3)
+    {
+      value = 1023;
+    }
+
     for (int i = 0; i < indice1 + 1; i++) {
       if (val >= listPos1[i] - (listPos1[i] - listPos1[i - 1]) / 2 && val < listPos1[i] + (listPos1[i + 1] - listPos1[i]) / 2) { //from which integer of listPos the slider the closer
         //go to this position
-        if (val > listPos1[i] + 2) {
-          analogWrite(motorSwitch[id], 255);
+        if (val > listPos1[i] + 60) {
+          digitalWrite(motorSwitch[id], HIGH);
           digitalWrite(motorPinPlus[id], HIGH);
           digitalWrite(motorPinMinus[id], LOW);
         }
-        else if (val < listPos1[i] - 2) {
-          analogWrite(motorSwitch[id], 255);
+        else if (val < listPos1[i] - 60) {
+          digitalWrite(motorSwitch[id], HIGH);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], HIGH);
         }
         else {
-          analogWrite(motorSwitch[id], 0);
+          digitalWrite(motorSwitch[id], LOW);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], LOW);
         }
@@ -242,21 +258,27 @@ void scale(int id) {
   }
   else if (id == 4 || id == 5) {
     int val = analogRead(slider[id]);
+
+    if (id == 4 || id == 5)
+    {
+      value = 1023;
+    }
+
     for (int i = 0; i < indice2 + 1; i++) {
       if (val >= listPos2[i] - (listPos2[i] - listPos2[i - 1]) / 2 && val < listPos2[i] + (listPos2[i + 1] - listPos2[i]) / 2) { //from which integer of listPos the slider the closer
         //go to this position
-        if (val > listPos2[i] + 2) {
-          analogWrite(motorSwitch[id], 255);
+        if (val > listPos2[i] + 60) {
+          digitalWrite(motorSwitch[id], HIGH);
           digitalWrite(motorPinPlus[id], HIGH);
           digitalWrite(motorPinMinus[id], LOW);
         }
-        else if (val < listPos2[i] - 2) {
-          analogWrite(motorSwitch[id], 255);
+        else if (val < listPos2[i] - 60) {
+          digitalWrite(motorSwitch[id], HIGH);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], HIGH);
         }
         else {
-          analogWrite(motorSwitch[id], 0);
+          digitalWrite(motorSwitch[id], LOW);
           digitalWrite(motorPinPlus[id], LOW);
           digitalWrite(motorPinMinus[id], LOW);
         }
@@ -288,19 +310,15 @@ void sliderToVal(int id, int val) {
   int value;
   if (abs(pos - val) > 2)
   {
-
-    if (id == 3) {
+    if (id == 3 || id == 4) {
       value = abs(pos - val) * 10 + 1000;
     }
-    if (id == 1) {
+    if (id == 1 || id == 2) {
       value = abs(pos - val) * 10 + 850;
     }
-
-    if (id == 5) {
+    if (id == 5 || id == 6) {
       value = abs(pos - val) * 10 + 850;
     }
-
-
     if (value > 1023)
     {
       value = 1023;
