@@ -95,7 +95,7 @@ public class Triple_axis_V1 : MonoBehaviour
     // Vertical axis from LEAP motion module
     // public int pos_y;
 
-    public int time;
+    public int time, handInFrameT = 0;
     public float[] sent_data = new float[3];
     // Create new stopwatch object
     public Stopwatch stopwatch = new Stopwatch();
@@ -113,112 +113,134 @@ public class Triple_axis_V1 : MonoBehaviour
     
     //Vector interactionBox;
 
-    string gestureRecognition(Vector thumbTip, Vector fingerTip, Vector palmPos, Vector middleFingerTip, Finger finger)
+    string gestureRecognition(Vector thumbTip, Vector fingerTip, Vector palmPos, Vector middleFingerTip, Finger indexfinger, Finger ringFinger, Finger littleFinger)
     {
-        // String to store selected gesture type
+       // String to store measured gesture type
         string gesture = "none";
 
-        // Summation of pinch values for calculating the average
-        float pinchSum = 0;
-
-        /*
-         * Finds the 
-        float max = (float)1.3;
-        float min = (float)0.7;
-        bool t_f_x = ((Math.Abs(thumbTip.x) > Math.Abs((min * fingerTip.x))) && (Math.Abs((thumbTip.x)) < (max * Math.Abs(fingerTip.x))));
-        bool t_f_y = ((Math.Abs(thumbTip.y) > (min * Math.Abs(fingerTip.y))) && (Math.Abs(thumbTip.y) < (max * Math.Abs(fingerTip.y))));
-        bool t_f_z = ((Math.Abs(thumbTip.z) > (0 * Math.Abs(fingerTip.z))) && (Math.Abs(thumbTip.z) < (3 * Math.Abs(fingerTip.z))));
-        //print(t_f_x);
-        //print(t_f_y);
-        //print(t_f_z);
-        */
-
-        // Find absolute distance between index and middle finger tips- using pythagoras theorem in 3D
-        float fingerDist = (float)Math.Sqrt(Math.Pow(((double)thumbTip.x - (double)fingerTip.x), 2) + Math.Pow(((double)thumbTip.y - (double)fingerTip.y), 2) + Math.Pow(((double)thumbTip.z - (double)fingerTip.z), 2));
-
-        // Use Pythag. in 3D to find absolute distance between middle finger and thumb
-        float middleFingerPalmDist = (float)Math.Sqrt(Math.Pow(((double)middleFingerTip.x - (double)palmPos.x), 2) + Math.Pow(((double)middleFingerTip.y - (double)palmPos.y), 2) + Math.Pow(((double)middleFingerTip.z - (double)palmPos.z), 2));
-
-        // Use Pythag. in 3D to find absolute distance between middle finger and thumb
-        float indexFingerPalmDist = (float)Math.Sqrt(Math.Pow(((double)fingerTip.x - (double)palmPos.x), 2) + Math.Pow(((double)fingerTip.y - (double)palmPos.y), 2) + Math.Pow(((double)fingerTip.z - (double)palmPos.z), 2));
-
-        Vector indexFingerDir = finger.Direction;
-        bool xPoint = false, yPoint = false, zPoint = false; ;
-        if (Math.Abs(indexFingerDir.x) > 0.94 && Math.Abs(indexFingerDir.x) < 1.04) xPoint = true;
-        if (Math.Abs(indexFingerDir.y) > 0.94 && Math.Abs(indexFingerDir.y) < 1.04) yPoint = true;
-        if (Math.Abs(indexFingerDir.z) > 0.94 && Math.Abs(indexFingerDir.z) < 1.04) zPoint = true;
-        print(indexFingerDir);
-        // Code below finds the derivative of distance between middle finger and index finger. If this value sharply increases, the system assumes we are opening our fingers
-        /*
-        if (itr > 5)
-            {
-            float pinchDistSum = 0;
-            for (int i = 0; i < 5; i++)
-            {
-                pinchDistSum += pinchDistHistory[i];
-            }
-            float pinchDistAvg = pinchDistSum / 5;
-            float deltaPinchDist = pinchDistAvg / timeElapsed;
-
-            if ((((fingerDist - pinchDistHistory[(itr) % 5]) / timeElapsed) > (deltaPinchDist - 3)) && (((fingerDist - pinchDistHistory[(itr) % 5]) / timeElapsed) < (deltaPinchDist + 3)))
-            {
-                pinchBool = true;
-                print(pinchBool);
-                print(deltaPinchDist - ((fingerDist - pinchDistHistory[(itr - 1) % 5]) / timeElapsed));
-            }
-            else
-            {
-                pinchBool = false;
-            }
-        }
-        */
-
-
-        // Condition to check if we are using a pinch gesture. We are considered to be pinching when our fingers are close together, or by default if 4/5 of
-        // the last frames had a pinch gesture in them. In order for a pinch gesture to be recognised, the hand must not be clenched into a fist. A fist is formed when
-        // the index finger tip is close to the palm of the hand. 
-        if ((fingerDist <= 45 || pinchAvg >= 0.8) && middleFingerPalmDist >= 55 && indexFingerPalmDist >= 55)
+        if (handInFrameT > 60)
         {
-            if (fingerDist <= 45)
+            // Summation of pinch values for calculating the average
+            float pinchSum = 0;
+
+            /*
+             * Finds the 
+            float max = (float)1.3;
+            float min = (float)0.7;
+            bool t_f_x = ((Math.Abs(thumbTip.x) > Math.Abs((min * fingerTip.x))) && (Math.Abs((thumbTip.x)) < (max * Math.Abs(fingerTip.x))));
+            bool t_f_y = ((Math.Abs(thumbTip.y) > (min * Math.Abs(fingerTip.y))) && (Math.Abs(thumbTip.y) < (max * Math.Abs(fingerTip.y))));
+            bool t_f_z = ((Math.Abs(thumbTip.z) > (0 * Math.Abs(fingerTip.z))) && (Math.Abs(thumbTip.z) < (3 * Math.Abs(fingerTip.z))));
+            //print(t_f_x);
+            //print(t_f_y);
+            //print(t_f_z);
+            */
+
+            Vector littleFingerPos = littleFinger.TipPosition;
+            Vector ringFingerPos = ringFinger.TipPosition;
+
+            // Find absolute distance between index and middle finger tips- using pythagoras theorem in 3D
+            float fingerDist = (float)Math.Sqrt(Math.Pow(((double)thumbTip.x - (double)fingerTip.x), 2) + Math.Pow(((double)thumbTip.y - (double)fingerTip.y), 2) + Math.Pow(((double)thumbTip.z - (double)fingerTip.z), 2));
+
+            // Use Pythag. in 3D to find absolute distance between middle finger and thumb
+            float middleFingerPalmDist = (float)Math.Sqrt(Math.Pow(((double)middleFingerTip.x - (double)palmPos.x), 2) + Math.Pow(((double)middleFingerTip.y - (double)palmPos.y), 2) + Math.Pow(((double)middleFingerTip.z - (double)palmPos.z), 2));
+
+            // Use Pythag. in 3D to find absolute distance between index finger and palm
+            float indexFingerPalmDist = (float)Math.Sqrt(Math.Pow(((double)fingerTip.x - (double)palmPos.x), 2) + Math.Pow(((double)fingerTip.y - (double)palmPos.y), 2) + Math.Pow(((double)fingerTip.z - (double)palmPos.z), 2));
+
+            // Use Pythag. in 3D to find absolute distance between little finger and palm 
+            float littleFPDist = (float)Math.Sqrt(Math.Pow(((double)littleFingerPos.x - (double)palmPos.x), 2) + Math.Pow(((double)littleFingerPos.y - (double)palmPos.y), 2) + Math.Pow(((double)littleFingerPos.z - (double)palmPos.z), 2));
+            print(littleFPDist);
+            // Use Pythag. in 3D to find absolute distance between ring finger and palm 
+            float ringFPDist = (float)Math.Sqrt(Math.Pow(((double)ringFingerPos.x - (double)palmPos.x), 2) + Math.Pow(((double)ringFingerPos.y - (double)palmPos.y), 2) + Math.Pow(((double)ringFingerPos.z - (double)palmPos.z), 2));
+            print(ringFPDist);
+            
+            // Define vectors holding the direction each finger points in
+            Vector indexFingerDir = indexfinger.Direction;
+            Vector ringFingerDir = ringFinger.Direction;
+            Vector littleFingerDir = littleFinger.Direction;
+
+            bool xPass = false, yPass = false, zPass = false;
+            if ((Math.Abs(ringFingerDir.x) >= Math.Abs((0 * littleFingerDir.x))) && (Math.Abs(ringFingerDir.x) <= Math.Abs(2.5 * littleFingerDir.x))) xPass = true; print(xPass);
+            if ((Math.Abs(ringFingerDir.y) >= Math.Abs((0 * littleFingerDir.y))) && (Math.Abs(ringFingerDir.y) <= Math.Abs(2.5 * littleFingerDir.y))) yPass = true; print(yPass);
+            if ((Math.Abs(ringFingerDir.z) >= Math.Abs((0 * littleFingerDir.z))) && (Math.Abs(ringFingerDir.z) <= Math.Abs(2.5 * littleFingerDir.z))) zPass = true; print(zPass); print("----");
+
+            bool xPoint = false, yPoint = false, zPoint = false;
+            if (Math.Abs(indexFingerDir.x) > 0.94 && Math.Abs(indexFingerDir.x) < 1.04) xPoint = true; //print(xPoint);
+            if (Math.Abs(indexFingerDir.y) > 0.94 && Math.Abs(indexFingerDir.y) < 1.04) yPoint = true; //print(yPoint);
+            if (Math.Abs(indexFingerDir.z) > 0.94 && Math.Abs(indexFingerDir.z) < 1.04) zPoint = true; //print(zPoint);
+
+            // Code below finds the derivative of distance between middle finger and index finger. If this value sharply increases, the system assumes we are opening our fingers
+            /*
+            if (itr > 5)
+                {
+                float pinchDistSum = 0;
+                for (int i = 0; i < 5; i++)
+                {
+                    pinchDistSum += pinchDistHistory[i];
+                }
+                float pinchDistAvg = pinchDistSum / 5;
+                float deltaPinchDist = pinchDistAvg / timeElapsed;
+
+                if ((((fingerDist - pinchDistHistory[(itr) % 5]) / timeElapsed) > (deltaPinchDist - 3)) && (((fingerDist - pinchDistHistory[(itr) % 5]) / timeElapsed) < (deltaPinchDist + 3)))
+                {
+                    pinchBool = true;
+                    print(pinchBool);
+                    print(deltaPinchDist - ((fingerDist - pinchDistHistory[(itr - 1) % 5]) / timeElapsed));
+                }
+                else
+                {
+                    pinchBool = false;
+                }
+            }
+            */
+
+
+            // Condition to check if we are using a pinch gesture. We are considered to be pinching when our fingers are close together, or by default if 4/5 of
+            // the last frames had a pinch gesture in them. In order for a pinch gesture to be recognised, the hand must not be clenched into a fist. A fist is formed when
+            // the index finger tip is close to the palm of the hand. 
+            if ((fingerDist <= 45 || pinchAvg >= 0.8) && middleFingerPalmDist >= 55 && indexFingerPalmDist >= 55 && ((xPass && yPass) || (zPass && xPass) || (yPass && zPass)) && littleFPDist >= 50 && littleFPDist >= 50)
             {
-                pinchHistory[itr % 5] = 1;
-                //pinchDistHistory[itr % 5] = fingerDist;
+                if (fingerDist <= 45)
+                {
+                    pinchHistory[itr % 5] = 1;
+                    //pinchDistHistory[itr % 5] = fingerDist;
+                }
+                else
+                {
+                    pinchHistory[itr % 5] = 0;
+                }
+                gesture = "pinch";
             }
             else
             {
                 pinchHistory[itr % 5] = 0;
             }
-            gesture = "pinch";
-        }
-        else
-        {
-            pinchHistory[itr % 5] = 0;
-        }
 
-        // Compute average of pinches
-        for (int i = 0; i < 4; i++)
-        {
-            pinchSum += pinchHistory[i];
-        }
+            // Compute average of pinches
+            for (int i = 0; i < 4; i++)
+            {
+                pinchSum += pinchHistory[i];
+            }
 
-        pinchAvg = (float)(pinchSum / 5);
+            pinchAvg = (float)(pinchSum / 5);
 
-        // if middle finger is close to center of palm of hand, label gesture as fist
-        if (middleFingerPalmDist < 55 && indexFingerPalmDist < 55)
-        {
-            gesture = "fist";
-        }
-        else if (middleFingerPalmDist < 55 && indexFingerPalmDist < 55 && zPoint && !(xPoint || yPoint))
-        {
-            gesture = "z point";
-        }
-        else if (middleFingerPalmDist < 55 && indexFingerPalmDist < 55 && yPoint && !(xPoint || zPoint))
-        {
-            gesture = "y point";
-        }
-        else if (middleFingerPalmDist < 55 && indexFingerPalmDist < 55 && xPoint && !(yPoint || zPoint))
-        {
-            gesture = "x point";
+            // if middle finger is close to center of palm of hand, label gesture as fist
+            if ((middleFingerPalmDist < 55 && indexFingerPalmDist < 55) || (littleFPDist < 50 && littleFPDist < 50))
+            {
+                gesture = "fist";
+            }
+            else if (middleFingerPalmDist < 55 && indexFingerPalmDist > 55 && zPoint && !(xPoint || yPoint))
+            {
+                gesture = "z point";
+            }
+            else if (middleFingerPalmDist < 55 && indexFingerPalmDist > 55 && yPoint && !(xPoint || zPoint))
+            {
+                gesture = "y point";
+            }
+            else if (middleFingerPalmDist < 55 && indexFingerPalmDist > 55 && xPoint && !(yPoint || zPoint))
+            {
+                gesture = "x point";
+            }
         }
         return gesture;
     }
@@ -517,13 +539,15 @@ public class Triple_axis_V1 : MonoBehaviour
             Frame frame = controller.Frame();
             //interactionBox = frame.InteractionBox;
 
+            int numberHands = frame.Hands.Count;
             // if statement to check if there are any hands in the frame
-            if (frame.Hands.Count > 0)
+            if (numberHands > 0)
             {
+                handInFrameT += (int)timeElapsed;
                 hands_out_of_view = false;
                 List<Hand> hands = frame.Hands;
                 Hand firstHand = hands[0];
-
+                
                 if (trackFinger)
                 {
                     // Halt previous stop watch run
@@ -536,10 +560,12 @@ public class Triple_axis_V1 : MonoBehaviour
                     // Start timer to find runtime of each frame
                     stopwatch.Start();
 
-                    // Create an object of type finger for the index finger & thumb
-                    Finger indexFinger = fingers[1];
+                    // Create an object of type finger for the thumb, and index, middle, ring and little fingers
                     Finger thumb = fingers[0];
+                    Finger indexFinger = fingers[1];
                     Finger middleFinger = fingers[2];
+                    Finger ringFinger = fingers[3];
+                    Finger littleFinger = fingers[4];
 
                     // Assign positions vectors for the tips of index fingers and thumbs
                     fingerTip = indexFinger.TipPosition;
@@ -602,7 +628,7 @@ public class Triple_axis_V1 : MonoBehaviour
                     handCenter = firstHand.PalmPosition;
 
                     // Run gesture recognition fucntion to identify gesture in the frame
-                    gesture = gestureRecognition(thumbTip, fingerTip, handCenter, middleFingerTip, indexFinger);
+                    gesture = gestureRecognition(thumbTip, fingerTip, handCenter, middleFingerTip, indexFinger, ringFinger, littleFinger);
                     if (gesture == "pinch")
                     {
                         UnityEngine.Debug.Log("Pinch Activated");
@@ -703,7 +729,7 @@ public class Triple_axis_V1 : MonoBehaviour
 
                         if (toggleHaptics)
                         {
-                            print("Haptics Enabled");
+                            //print("Haptics Enabled");
                             if ((discretizeAxes == false) & (hapticTracking == true))
                             {
                                 asar.SendMessage(3, (int)sent_data[0]);
@@ -772,29 +798,28 @@ public class Triple_axis_V1 : MonoBehaviour
                         }
                     }
                 }
-                else if (gesture == "x point")
+                
+                else if (gesture == "x point" || gesture == "y point" || gesture == "z point")
                 {
                     if (applyKalmanFiltering)
                     {
-                        filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV_X, old_filtered_x, old_p_x_xaxis, (float)timeElapsed);
+                        filtered_x = kalmanFilter(x_axis_index, itr, fingerTipV_x, old_pos_x_index, old_p_x_xaxis, (float)timeElapsed);
                         old_filtered_x = filtered_x[0];
                         old_p_x_xaxis = filtered_x[1];
-                        //print(filtered_x[1]);
 
-                        filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y, old_p_x_yaxis, (float)timeElapsed);
+                        filtered_y = kalmanFilter(y_axis_index, itr, fingerTipV_y, old_pos_y_index, old_p_x_yaxis, (float)timeElapsed);
                         old_filtered_y = filtered_y[0];
                         old_p_x_yaxis = filtered_y[1];
-                        //print(filtered_y[1]);
 
-                        filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z, old_p_x_zaxis, (float)timeElapsed);
+                        filtered_z = kalmanFilter(z_axis_index, itr, fingerTipV_z, old_pos_z_index, old_p_x_zaxis, (float)timeElapsed);
                         old_filtered_z = filtered_z[0];
                         old_p_x_zaxis = filtered_z[1];
-                        //print(filtered_z[1]);
 
-                        float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
+
+                        float[] sent_data_array = {filtered_x[0], filtered_y[0], filtered_z[0]};
                         sent_data = normalizedData(sent_data_array);
 
-                        if ((midPThumbIndex.x != old_midPThumbIndex.x) && !toggleHaptics)
+                        if ((old_pos_x_index != x_axis_index) && !toggleHaptics && gesture == "x point")
                         {
                             try
                             {
@@ -807,7 +832,7 @@ public class Triple_axis_V1 : MonoBehaviour
                             }
                         }
 
-                        if ((midPThumbIndex.y != old_midPThumbIndex.y) && !toggleHaptics)
+                        if ((old_pos_y_index != y_axis_index) && !toggleHaptics &&  gesture == "y point")
                         {
                             try
                             {
@@ -820,7 +845,7 @@ public class Triple_axis_V1 : MonoBehaviour
                             }
                         }
 
-                        if ((midPThumbIndex.z != old_midPThumbIndex.z) && !toggleHaptics)
+                        if ((old_pos_z_index != z_axis_index) && !toggleHaptics  && gesture == "z point")
                         {
                             try
                             {
@@ -836,19 +861,16 @@ public class Triple_axis_V1 : MonoBehaviour
                     else
                     {
                         // Normalize data for length of fader axis before sending
-                        float[] sent_data_array = { midPThumbIndex.x, midPThumbIndex.y, midPThumbIndex.z };
+                        float[] sent_data_array = {midPThumbIndex.x, midPThumbIndex.y, midPThumbIndex.z};
                         sent_data = normalizedData(sent_data_array);
                         //UnityEngine.Debug.Log("In loop");
                         //print(sent_data);
 
-                        if (midPThumbIndex.x != old_midPThumbIndex.x)
+                         if (!toggleHaptics && gesture == "x_point")
                         {
                             try
                             {
                                 asar.SendMessage(3, (int)sent_data[0]);
-                                //print("X DATA SENT");
-                                //print((int)sent_data[0]);
-                                // print("                   ");
                             }
                             catch (Exception e)
                             {
@@ -857,14 +879,11 @@ public class Triple_axis_V1 : MonoBehaviour
                             }
                         }
 
-                        if (midPThumbIndex.y != old_midPThumbIndex.y)
+                        if (!toggleHaptics && gesture == "y_point")
                         {
                             try
                             {
                                 asar.SendMessage(1, (int)sent_data[1]);
-                                // print("Y DATA SENT");
-                                // print((int)sent_data[1]);
-                                //  print("                   ");
                             }
                             catch (Exception e)
                             {
@@ -873,14 +892,12 @@ public class Triple_axis_V1 : MonoBehaviour
                             }
                         }
 
-                        if (midPThumbIndex.z != old_midPThumbIndex.z)
+                        if (!toggleHaptics && gesture == "z_point")
                         {
                             try
                             {
                                 asar.SendMessage(5, (int)sent_data[2]);
-                                //  print("Z DATA SENT");
-                                //  print((int)sent_data[2]);
-                                //  print("                   ");
+                                print("In z point");
                             }
                             catch (Exception e)
                             {
@@ -888,8 +905,6 @@ public class Triple_axis_V1 : MonoBehaviour
                                 print(e);
                             }
                         }
-
-
                     }
                 }
             }
@@ -908,12 +923,17 @@ public class Triple_axis_V1 : MonoBehaviour
                 indexThumbMidV_Y = new float[5];
                 indexThumbMidV_Z = new float[5];
 
-                // Ensure time elapsed doesnt keep growing (could cause the posiiton prediction in the Kalman function to be inflated)
+                // Ensure time elapsed doesn't keep growing (could cause the posiiton prediction in the Kalman function to be inflated)
                 timeElapsed = 0;
+
+                // Reset hand in frame time
+                handInFrameT = 0;
                 old_filtered_x = 0;
                 old_filtered_y = 0;
+                old_filtered_z = 0;
                 old_p_x_xaxis = 0;
                 old_p_x_yaxis = 0;
+                old_p_x_zaxis = 0;
                 hands_out_of_view = true;
             }
         }
@@ -943,5 +963,4 @@ public class Triple_axis_V1 : MonoBehaviour
         }
     }
 }
-
 #endif
