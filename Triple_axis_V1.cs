@@ -51,46 +51,46 @@ public class Triple_axis_V1 : MonoBehaviour
 
     // Vectors describing position/velocity of the midpoint between thumb joint and index finger joint
     private Vector3 midPThumbIndex;
-    private Vector3 old_midPThumbIndex;
+    private Vector3[] old_midPThumbIndex = new Vector3[2];
 
     // Velocity for trackable objects ALONG X AXIS ONLY
     private Vector handCenterV;
-    private float old_pos_x_hand;
+    private float[] old_pos_x_hand = new float[2];
     private float x_axis_hand;
     private float[] fingerTipV_x = new float[5], fingerTipV_z = new float[5], fingerTipV_y = new float[5], thumbTipV = new float[5], indexThumbMidV_X = new float[5], indexThumbMidV_Y = new float[5], indexThumbMidV_Z = new float[5];
-    private float oldFingerTipV;
-    private float oldThumbTipV;
-
+    private float [] oldFingerTipV = new float[2];
+    private float[] oldThumbTipV = new float[2];
+   
     // Elapsed Time
     public float timeElapsed;
-    public int index = 0;
+    public int index = 0, i = 0;
 
     // Along x axis of LEAP motion module
     //public int[] pos_x;
     public float x_axis_index = 0, x_axis_thumb = 0;
-    public float old_pos_x_index, old_pos_x_thumb;
+    public float [] old_pos_x_index = new float[2], old_pos_x_thumb = new float[2];
 
     // Vertical axis from LEAP motion module
     public float y_axis_index = 0;
-    public float old_pos_y_index;
+    public float[] old_pos_y_index = new float[2];
 
     public float y_axis_thumb = 0;
-    public float old_pos_y_thumb;
+    public float[] old_pos_y_thumb= new float[2];
 
     // Z axis from LEAP motion module
     public float z_axis_index = 0;
-    public float old_pos_z_index;
+    public float[] old_pos_z_index = new float[2];
 
     public float z_axis_thumb = 0;
-    public float old_pos_z_thumb;
+    public float[] old_pos_z_thumb = new float[2];
 
     // Kalman filtered data value
     public float[] filtered_x = new float[2], filtered_y = new float[2], filtered_z = new float[2];
 
-    public float old_filtered_x = 10, old_filtered_y = 10, old_filtered_z = 10;
+    public float[] old_filtered_x = { 10, 10 }, old_filtered_y = { 10, 10 }, old_filtered_z = { 10, 10 };
 
-    public float old_p_x_xaxis = 10, old_p_x_yaxis = 10, old_p_x_zaxis = 10;
-    
+    public float[] old_p_x_xaxis = { 10, 10 }, old_p_x_yaxis = { 10, 10 }, old_p_x_zaxis = { 10, 10 };
+
 
     // Vertical axis from LEAP motion module
     // public int pos_y;
@@ -105,17 +105,18 @@ public class Triple_axis_V1 : MonoBehaviour
 
     // Variable to store gesture type
     public string gesture;
-    public int[] pinchHistory = new int[5];
+    public int[,] pinchHistory = new int[2,5];
     public float pinchAvg = 0;
-    public float[] pinchDistHistory = new float[5];
+    public float[,] pinchDistHistory = new float[2,5];
+    public int[] yAxis = { 1, 0 }, xAxis = { 3, 2 }, zAxis = { 5, 4 };
 
     ArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
-    
+
     //Vector interactionBox;
 
     string gestureRecognition(Vector thumbTip, Vector fingerTip, Vector palmPos, Vector middleFingerTip, Finger indexfinger, Finger ringFinger, Finger littleFinger)
     {
-       // String to store measured gesture type
+        // String to store measured gesture type
         string gesture = "none";
 
         if (handInFrameT > 60)
@@ -153,7 +154,7 @@ public class Triple_axis_V1 : MonoBehaviour
             // Use Pythag. in 3D to find absolute distance between ring finger and palm 
             float ringFPDist = (float)Math.Sqrt(Math.Pow(((double)ringFingerPos.x - (double)palmPos.x), 2) + Math.Pow(((double)ringFingerPos.y - (double)palmPos.y), 2) + Math.Pow(((double)ringFingerPos.z - (double)palmPos.z), 2));
             print(ringFPDist);
-            
+
             // Define vectors holding the direction each finger points in
             Vector indexFingerDir = indexfinger.Direction;
             Vector ringFingerDir = ringFinger.Direction;
@@ -202,24 +203,24 @@ public class Triple_axis_V1 : MonoBehaviour
             {
                 if (fingerDist <= 45)
                 {
-                    pinchHistory[itr % 5] = 1;
+                    pinchHistory[i,itr % 5] = 1;
                     //pinchDistHistory[itr % 5] = fingerDist;
                 }
                 else
                 {
-                    pinchHistory[itr % 5] = 0;
+                    pinchHistory[i,itr % 5] = 0;
                 }
                 gesture = "pinch";
             }
             else
             {
-                pinchHistory[itr % 5] = 0;
+                pinchHistory[i,itr % 5] = 0;
             }
 
             // Compute average of pinches
-            for (int i = 0; i < 4; i++)
+            for (int c = 0; c < 4; c++)
             {
-                pinchSum += pinchHistory[i];
+                pinchSum += pinchHistory[i,c];
             }
 
             pinchAvg = (float)(pinchSum / 5);
@@ -543,366 +544,352 @@ public class Triple_axis_V1 : MonoBehaviour
             // if statement to check if there are any hands in the frame
             if (numberHands > 0)
             {
-                handInFrameT += (int)timeElapsed;
-                hands_out_of_view = false;
-                List<Hand> hands = frame.Hands;
-                Hand firstHand = hands[0];
-                
-                if (trackFinger)
+                for (i = 0; i < numberHands; i++)
                 {
-                    // Halt previous stop watch run
-                    stopwatch.Stop();
-                    timeElapsed = (int)stopwatch.ElapsedMilliseconds; // Record time between frames
-                    stopwatch.Reset(); // Reset stopwatch function
-                    // print(timeElapsed);
-                    List<Finger> fingers = firstHand.Fingers;
+                   
+                    handInFrameT += (int)timeElapsed;
+                    hands_out_of_view = false;
+                    List<Hand> hands = frame.Hands;
+                    Hand Hand = hands[i];
 
-                    // Start timer to find runtime of each frame
-                    stopwatch.Start();
-
-                    // Create an object of type finger for the thumb, and index, middle, ring and little fingers
-                    Finger thumb = fingers[0];
-                    Finger indexFinger = fingers[1];
-                    Finger middleFinger = fingers[2];
-                    Finger ringFinger = fingers[3];
-                    Finger littleFinger = fingers[4];
-
-                    // Assign positions vectors for the tips of index fingers and thumbs
-                    fingerTip = indexFinger.TipPosition;
-                    thumbTip = thumb.TipPosition;
-                    middleFingerTip = middleFinger.TipPosition;
-
-                    //Enum.GetValues(typeof(Bone.BoneType));
-
-                    Bone thumbBone = thumb.Bone(Bone.BoneType.TYPE_PROXIMAL); //Next Joint
-                    Bone indexBone = indexFinger.Bone(Bone.BoneType.TYPE_PROXIMAL);
-                    indexJoint = indexBone.NextJoint;
-                    thumbJoint = thumbBone.NextJoint;
-
-                    old_midPThumbIndex = midPThumbIndex;
-
-                    // Find modpoint between ___ Joint of thumb and ___ joint of index finger
-
-                    midPThumbIndex.x = ((thumbJoint.x + indexJoint.x) / 2);
-                    //print(midPThumbIndex.x);
-                    midPThumbIndex.y = ((thumbJoint.y + indexJoint.y) / 2);
-                    //print(midPThumbIndex.y);
-                    midPThumbIndex.z = ((thumbJoint.z + indexJoint.z) / 2);
-                    //print(midPThumbIndex.z);
-
-                    // Call function to compute the velocity of finger tips
-                    fingerTipV_x[index] = velocity(x_axis_index, old_pos_x_index, timeElapsed);
-                    fingerTipV_y[index] = velocity(x_axis_index, old_pos_x_index, timeElapsed);
-                    fingerTipV_z[index] = velocity(x_axis_index, old_pos_x_index, timeElapsed);
-
-                    index = itr % 5;
-
-                    //thumbTipV[index] = velocity(x_axis_thumb, old_pos_x_thumb, timeElapsed);
-
-                    // Velcoity of index finger and thumb midpoint
-                    indexThumbMidV_X[index] = velocity(midPThumbIndex.x, old_midPThumbIndex.x, timeElapsed);
-                    indexThumbMidV_Y[index] = velocity(midPThumbIndex.y, old_midPThumbIndex.y, timeElapsed);
-                    indexThumbMidV_Z[index] = velocity(midPThumbIndex.z, old_midPThumbIndex.z, timeElapsed);
-
-                    // Tracking the position of the tip of the index finger in all three dimensions
-                    old_pos_x_index = x_axis_index;
-                    x_axis_index = fingerTip.x;
-
-                    old_pos_y_index = y_axis_index;
-                    y_axis_index = fingerTip.y;
-
-                    old_pos_z_index = z_axis_index;
-                    z_axis_index = fingerTip.z;
-
-                    // Tracking the positions of the tip of the thumb in all three dimensions
-                    old_pos_x_thumb = x_axis_thumb;
-                    x_axis_thumb = thumbTip.x;
-
-                    old_pos_y_thumb = y_axis_thumb;
-                    y_axis_thumb = thumbTip.y;
-
-                    old_pos_z_thumb = z_axis_thumb;
-                    z_axis_thumb = thumbTip.z;
-
-                    // Find position of the palm of the hand 
-                    handCenter = firstHand.PalmPosition;
-
-                    // Run gesture recognition fucntion to identify gesture in the frame
-                    gesture = gestureRecognition(thumbTip, fingerTip, handCenter, middleFingerTip, indexFinger, ringFinger, littleFinger);
-                    if (gesture == "pinch")
+                    if (trackFinger)
                     {
-                        UnityEngine.Debug.Log("Pinch Activated");
+                        // Halt previous stop watch run
+                        stopwatch.Stop();
+                        timeElapsed = (int)stopwatch.ElapsedMilliseconds; // Record time between frames
+                        stopwatch.Reset(); // Reset stopwatch function
+                                           // print(timeElapsed);
+                        List<Finger> fingers = Hand.Fingers;
+
+                        // Start timer to find runtime of each frame
+                        stopwatch.Start();
+
+                        // Create an object of type finger for the thumb, and index, middle, ring and little fingers
+                        Finger thumb = fingers[0];
+                        Finger indexFinger = fingers[1];
+                        Finger middleFinger = fingers[2];
+                        Finger ringFinger = fingers[3];
+                        Finger littleFinger = fingers[4];
+
+                        // Assign positions vectors for the tips of index fingers and thumbs
+                        fingerTip = indexFinger.TipPosition;
+                        thumbTip = thumb.TipPosition;
+                        middleFingerTip = middleFinger.TipPosition;
+
+                        //Enum.GetValues(typeof(Bone.BoneType));
+
+                        Bone thumbBone = thumb.Bone(Bone.BoneType.TYPE_PROXIMAL); //Next Joint
+                        Bone indexBone = indexFinger.Bone(Bone.BoneType.TYPE_PROXIMAL);
+                        indexJoint = indexBone.NextJoint;
+                        thumbJoint = thumbBone.NextJoint;
+
+                        old_midPThumbIndex[i] = midPThumbIndex;
+
+                        // Find modpoint between ___ Joint of thumb and ___ joint of index finger
+
+                        midPThumbIndex.x = ((thumbJoint.x + indexJoint.x) / 2);
+                        //print(midPThumbIndex.x);
+                        midPThumbIndex.y = ((thumbJoint.y + indexJoint.y) / 2);
+                        //print(midPThumbIndex.y);
+                        midPThumbIndex.z = ((thumbJoint.z + indexJoint.z) / 2);
+                        //print(midPThumbIndex.z);
+
+                        // Call function to compute the velocity of finger tips
+                        fingerTipV_x[index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
+                        fingerTipV_y[index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
+                        fingerTipV_z[index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
+
+                        index = itr % 5;
+
+                        //thumbTipV[index] = velocity(x_axis_thumb, old_pos_x_thumb[i], timeElapsed);
+
+                        // Velcoity of index finger and thumb midpoint
+                        indexThumbMidV_X[index] = velocity(midPThumbIndex.x, old_midPThumbIndex[i].x, timeElapsed);
+                        indexThumbMidV_Y[index] = velocity(midPThumbIndex.y, old_midPThumbIndex[i].y, timeElapsed);
+                        indexThumbMidV_Z[index] = velocity(midPThumbIndex.z, old_midPThumbIndex[i].z, timeElapsed);
+
+                        // Tracking the position of the tip of the index finger in all three dimensions
+                        old_pos_x_index[i] = x_axis_index;
+                        x_axis_index = fingerTip.x;
+
+                        old_pos_y_index[i] = y_axis_index;
+                        y_axis_index = fingerTip.y;
+
+                        old_pos_z_index[i] = z_axis_index;
+                        z_axis_index = fingerTip.z;
+
+                        // Tracking the positions of the tip of the thumb in all three dimensions
+                        old_pos_x_thumb[i] = x_axis_thumb;
+                        x_axis_thumb = thumbTip.x;
+
+                        old_pos_y_thumb[i]= y_axis_thumb;
+                        y_axis_thumb = thumbTip.y;
+
+                        old_pos_z_thumb[i] = z_axis_thumb;
+                        z_axis_thumb = thumbTip.z;
+
+                        // Find position of the palm of the hand 
+                        handCenter = Hand.PalmPosition;
+
+                        // Run gesture recognition fucntion to identify gesture in the frame
+                        gesture = gestureRecognition(thumbTip, fingerTip, handCenter, middleFingerTip, indexFinger, ringFinger, littleFinger);
+                        if (gesture == "pinch")
+                        {
+                            UnityEngine.Debug.Log("Pinch Activated");
+                        }
+
+                        // If finger tracking is active, palm tracking should be inactivated
+                        trackPalm = false;
                     }
-                    
-                    // If finger tracking is active, palm tracking should be inactivated
-                    trackPalm = false;
-                }
 
-                
-                if (trackPalm)
-                {
-                    // Tracking palm of hand
-                    handCenterV = firstHand.PalmVelocity;
-                    old_pos_x_hand = x_axis_index;
-                    x_axis_hand = handCenter.x;
-                }
-                
 
-                if (gesture == "pinch") // x_axis_index > (old_pos_x_index + 10) || x_axis_index < (old_pos_x_index - 10)
-                {
-                    if (applyKalmanFiltering)
+                    if (trackPalm)
                     {
-
-                        /* TRACKING INDEX FINGER TIP
-                        //filtered_x = kalmanFilter(x_axis_index, itr, old_filtered_x, pKMinusOne);
-                        filtered_x = kalmanFilter(x_axis_index, itr, fingerTipV, old_filtered_x, old_p_x, (float)timeElapsed);
-                        old_filtered_x = filtered_x[0];
-                        old_p_x= filtered_x[1];
-                        sent_data = normalizedData(filtered_x[0]);
-                        */
-                        
-                        filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV_X, old_filtered_x, old_p_x_xaxis, (float)timeElapsed);
-                        old_filtered_x = filtered_x[0];
-                        old_p_x_xaxis = filtered_x[1];
-                        //print(filtered_x[1]);
-
-                        filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y, old_p_x_yaxis, (float)timeElapsed);
-                        old_filtered_y = filtered_y[0];
-                        old_p_x_yaxis = filtered_y[1];
-                        //print(filtered_y[1]);
-
-                        filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z, old_p_x_zaxis, (float)timeElapsed);
-                        old_filtered_z = filtered_z[0];
-                        old_p_x_zaxis = filtered_z[1];
-                        //print(filtered_z[1]);
-
-                        float[] sent_data_array = {filtered_x[0], filtered_y[0], filtered_z[0]};
-                        sent_data = normalizedData(sent_data_array);
-
-                        if ((midPThumbIndex.x != old_midPThumbIndex.x) && !toggleHaptics)
-                        {
-                            try
-                            {
-                                asar.SendMessage(3, (int)sent_data[0]);
-                                //print("X DATA SENT");
-                                //print((int)sent_data[0]);
-                                // print("                   ");
-                            }
-                            catch (Exception e)
-                            {
-                                print("EXCEPTION!");
-                                print(e);
-                            }
-                        }
-
-                        if ((midPThumbIndex.y != old_midPThumbIndex.y) && !toggleHaptics)
-                        {
-                            try
-                            {
-                                asar.SendMessage(1, (int)sent_data[1]);
-                                // print("Y DATA SENT");
-                                // print((int)sent_data[1]);
-                                //  print("                   ");
-                            }
-                            catch (Exception e)
-                            {
-                                print("EXCEPTION!");
-                                print(e);
-                            }
-                        }
-
-                        if ((midPThumbIndex.z != old_midPThumbIndex.z) && !toggleHaptics)
-                        {
-                            try
-                            {
-                                asar.SendMessage(5, (int)sent_data[2]);
-                                //  print("Z DATA SENT");
-                                //  print((int)sent_data[2]);
-                                //  print("                   ");
-                            }
-                            catch (Exception e)
-                            {
-                                print("EXCEPTION!");
-                                print(e);
-                            }
-                        }
-
-                        if (toggleHaptics)
-                        {
-                            //print("Haptics Enabled");
-                            if ((discretizeAxes == false) & (hapticTracking == true))
-                            {
-                                asar.SendMessage(3, (int)sent_data[0]);
-                                asar.haptic();
-                                asar.SendMessage(1, (int)sent_data[1]);
-                                asar.haptic();
-                                asar.SendMessage(5, (int)sent_data[2]);
-                                asar.haptic();
-                            }
-                        }
+                        // Tracking palm of hand
+                        handCenterV = Hand.PalmVelocity;
+                        old_pos_x_hand[i] = x_axis_index;
+                        x_axis_hand = handCenter.x;
                     }
-                    else
+
+
+                    if (gesture == "pinch") // x_axis_index > (old_pos_x_index[i] + 10) || x_axis_index < (old_pos_x_index[i] - 10)
                     {
-                        // Normalize data for length of fader axis before sending
-                        float[] sent_data_array = { midPThumbIndex.x, midPThumbIndex.y, midPThumbIndex.z };
-                        sent_data = normalizedData(sent_data_array);
-                        //UnityEngine.Debug.Log("In loop");
-                        //print(sent_data);
-
-                        if (midPThumbIndex.x != old_midPThumbIndex.x)
+                        if (applyKalmanFiltering)
                         {
-                            try
+                            filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV_X, old_filtered_x[i], old_p_x_xaxis[i], (float)timeElapsed);
+                            old_filtered_x[i] = filtered_x[0];
+                            old_p_x_xaxis[i] = filtered_x[1];
+                            //print(filtered_x[1]);
+
+                            filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y[i], old_p_x_yaxis[i], (float)timeElapsed);
+                            old_filtered_y[i] = filtered_y[0];
+                            old_p_x_yaxis[i] = filtered_y[1];
+                            //print(filtered_y[1]);
+
+                            filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z[i], old_p_x_zaxis[i], (float)timeElapsed);
+                            old_filtered_z[i] = filtered_z[0];
+                            old_p_x_zaxis[i] = filtered_z[1];
+                            //print(filtered_z[1]);
+
+                            float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
+                            sent_data = normalizedData(sent_data_array);
+
+                            if ((midPThumbIndex.x != old_midPThumbIndex[i].x) && !toggleHaptics)
                             {
-                                asar.SendMessage(3, (int)sent_data[0]);
-                                //print("X DATA SENT");
-                                //print((int)sent_data[0]);
-                                // print("                   ");
+                                try
+                                {
+                                    asar.SendMessage(xAxis[i], (int)sent_data[0]);
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
                             }
-                            catch (Exception e)
+
+                            if ((midPThumbIndex.y != old_midPThumbIndex[i].y) && !toggleHaptics)
                             {
-                                print("EXCEPTION!");
-                                print(e);
+                                try
+                                {
+                                    asar.SendMessage(yAxis[i], (int)sent_data[1]);
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
+                            }
+
+                            if ((midPThumbIndex.z != old_midPThumbIndex[i].z) && !toggleHaptics)
+                            {
+                                try
+                                {
+                                    asar.SendMessage(zAxis[i], (int)sent_data[2]);
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
+                            }
+
+                            if (toggleHaptics)
+                            {
+                                //print("Haptics Enabled");
+                                if ((discretizeAxes == false) & (hapticTracking == true))
+                                {
+                                    asar.SendMessage(xAxis[i], (int)sent_data[0]);
+                                    asar.haptic();
+                                    asar.SendMessage(yAxis[i], (int)sent_data[1]);
+                                    asar.haptic();
+                                    asar.SendMessage(zAxis[i], (int)sent_data[2]);
+                                    asar.haptic();
+                                }
                             }
                         }
-
-                        if (midPThumbIndex.y != old_midPThumbIndex.y)
+                        else
                         {
-                            try
-                            {
-                                asar.SendMessage(1, (int)sent_data[1]);
-                                // print("Y DATA SENT");
-                                // print((int)sent_data[1]);
-                                //  print("                   ");
-                            }
-                            catch (Exception e)
-                            {
-                                print("EXCEPTION!");
-                                print(e);
-                            }
-                        }
+                            // Normalize data for length of fader axis before sending
+                            float[] sent_data_array = { midPThumbIndex.x, midPThumbIndex.y, midPThumbIndex.z };
+                            sent_data = normalizedData(sent_data_array);
+                            //UnityEngine.Debug.Log("In loop");
+                            //print(sent_data);
 
-                        if (midPThumbIndex.z != old_midPThumbIndex.z)
-                        {
-                            try
+                            if (midPThumbIndex.x != old_midPThumbIndex[i].x)
                             {
-                                asar.SendMessage(5, (int)sent_data[2]);
-                                //  print("Z DATA SENT");
-                                //  print((int)sent_data[2]);
-                                //  print("                   ");
+                                try
+                                {
+                                    asar.SendMessage(xAxis[i], (int)sent_data[0]);
+                                    //print("X DATA SENT");
+                                    //print((int)sent_data[0]);
+                                    // print("                   ");
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
                             }
-                            catch (Exception e)
+
+                            if (midPThumbIndex.y != old_midPThumbIndex[i].y)
                             {
-                                print("EXCEPTION!");
-                                print(e);
+                                try
+                                {
+                                    asar.SendMessage(yAxis[i], (int)sent_data[1]);
+                                    // print("Y DATA SENT");
+                                    // print((int)sent_data[1]);
+                                    //  print("                   ");
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
+                            }
+
+                            if (midPThumbIndex.z != old_midPThumbIndex[i].z)
+                            {
+                                try
+                                {
+                                    asar.SendMessage(zAxis[i], (int)sent_data[2]);
+                                    //  print("Z DATA SENT");
+                                    //  print((int)sent_data[2]);
+                                    //  print("                   ");
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
                             }
                         }
                     }
-                }
-                
-                else if (gesture == "x point" || gesture == "y point" || gesture == "z point")
-                {
-                    if (applyKalmanFiltering)
+
+                    else if (gesture == "x point" || gesture == "y point" || gesture == "z point")
                     {
-                        filtered_x = kalmanFilter(x_axis_index, itr, fingerTipV_x, old_pos_x_index, old_p_x_xaxis, (float)timeElapsed);
-                        old_filtered_x = filtered_x[0];
-                        old_p_x_xaxis = filtered_x[1];
-
-                        filtered_y = kalmanFilter(y_axis_index, itr, fingerTipV_y, old_pos_y_index, old_p_x_yaxis, (float)timeElapsed);
-                        old_filtered_y = filtered_y[0];
-                        old_p_x_yaxis = filtered_y[1];
-
-                        filtered_z = kalmanFilter(z_axis_index, itr, fingerTipV_z, old_pos_z_index, old_p_x_zaxis, (float)timeElapsed);
-                        old_filtered_z = filtered_z[0];
-                        old_p_x_zaxis = filtered_z[1];
-
-
-                        float[] sent_data_array = {filtered_x[0], filtered_y[0], filtered_z[0]};
-                        sent_data = normalizedData(sent_data_array);
-
-                        if ((old_pos_x_index != x_axis_index) && !toggleHaptics && gesture == "x point")
+                        if (applyKalmanFiltering)
                         {
-                            try
+                            filtered_x = kalmanFilter(x_axis_index, itr, fingerTipV_x, old_pos_x_index[i], old_p_x_xaxis[i], (float)timeElapsed);
+                            old_filtered_x[i] = filtered_x[0];
+                            old_p_x_xaxis[i] = filtered_x[1];
+
+                            filtered_y = kalmanFilter(y_axis_index, itr, fingerTipV_y, old_pos_y_index[i], old_p_x_yaxis[i], (float)timeElapsed);
+                            old_filtered_y[i] = filtered_y[0];
+                            old_p_x_yaxis[i] = filtered_y[1];
+
+                            filtered_z = kalmanFilter(z_axis_index, itr, fingerTipV_z, old_pos_z_index[i], old_p_x_zaxis[i], (float)timeElapsed);
+                            old_filtered_z[i] = filtered_z[0];
+                            old_p_x_zaxis[i] = filtered_z[1];
+
+
+                            float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
+                            sent_data = normalizedData(sent_data_array);
+
+                            if ((old_pos_x_index[i] != x_axis_index) && !toggleHaptics && gesture == "x point")
                             {
-                                asar.SendMessage(3, (int)sent_data[0]);
+                                try
+                                {
+                                    asar.SendMessage(xAxis[i], (int)sent_data[0]);
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
                             }
-                            catch (Exception e)
+
+                            if ((old_pos_y_index[i] != y_axis_index) && !toggleHaptics && gesture == "y point")
                             {
-                                print("EXCEPTION!");
-                                print(e);
+                                try
+                                {
+                                    asar.SendMessage(yAxis[i], (int)sent_data[1]);
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
+                            }
+
+                            if ((old_pos_z_index[i] != z_axis_index) && !toggleHaptics && gesture == "z point")
+                            {
+                                try
+                                {
+                                    asar.SendMessage(zAxis[i], (int)sent_data[2]);
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
                             }
                         }
-
-                        if ((old_pos_y_index != y_axis_index) && !toggleHaptics &&  gesture == "y point")
+                        else
                         {
-                            try
-                            {
-                                asar.SendMessage(1, (int)sent_data[1]);
-                            }
-                            catch (Exception e)
-                            {
-                                print("EXCEPTION!");
-                                print(e);
-                            }
-                        }
+                            // Normalize data for length of fader axis before sending
+                            float[] sent_data_array = { midPThumbIndex.x, midPThumbIndex.y, midPThumbIndex.z };
+                            sent_data = normalizedData(sent_data_array);
+                            //UnityEngine.Debug.Log("In loop");
+                            //print(sent_data);
 
-                        if ((old_pos_z_index != z_axis_index) && !toggleHaptics  && gesture == "z point")
-                        {
-                            try
+                            if (!toggleHaptics && gesture == "x_point")
                             {
-                                asar.SendMessage(5, (int)sent_data[2]);
+                                try
+                                {
+                                    asar.SendMessage(xAxis[i], (int)sent_data[0]);
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
                             }
-                            catch (Exception e)
-                            {
-                                print("EXCEPTION!");
-                                print(e);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Normalize data for length of fader axis before sending
-                        float[] sent_data_array = {midPThumbIndex.x, midPThumbIndex.y, midPThumbIndex.z};
-                        sent_data = normalizedData(sent_data_array);
-                        //UnityEngine.Debug.Log("In loop");
-                        //print(sent_data);
 
-                         if (!toggleHaptics && gesture == "x_point")
-                        {
-                            try
+                            if (!toggleHaptics && gesture == "y_point")
                             {
-                                asar.SendMessage(3, (int)sent_data[0]);
+                                try
+                                {
+                                    asar.SendMessage(yAxis[i], (int)sent_data[1]);
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
                             }
-                            catch (Exception e)
-                            {
-                                print("EXCEPTION!");
-                                print(e);
-                            }
-                        }
 
-                        if (!toggleHaptics && gesture == "y_point")
-                        {
-                            try
+                            if (!toggleHaptics && gesture == "z_point")
                             {
-                                asar.SendMessage(1, (int)sent_data[1]);
-                            }
-                            catch (Exception e)
-                            {
-                                print("EXCEPTION!");
-                                print(e);
-                            }
-                        }
-
-                        if (!toggleHaptics && gesture == "z_point")
-                        {
-                            try
-                            {
-                                asar.SendMessage(5, (int)sent_data[2]);
-                                print("In z point");
-                            }
-                            catch (Exception e)
-                            {
-                                print("EXCEPTION!");
-                                print(e);
+                                try
+                                {
+                                    asar.SendMessage(zAxis[i], (int)sent_data[2]);
+                                    print("In z point");
+                                }
+                                catch (Exception e)
+                                {
+                                    print("EXCEPTION!");
+                                    print(e);
+                                }
                             }
                         }
                     }
@@ -928,12 +915,12 @@ public class Triple_axis_V1 : MonoBehaviour
 
                 // Reset hand in frame time
                 handInFrameT = 0;
-                old_filtered_x = 0;
-                old_filtered_y = 0;
-                old_filtered_z = 0;
-                old_p_x_xaxis = 0;
-                old_p_x_yaxis = 0;
-                old_p_x_zaxis = 0;
+                old_filtered_x = new float[2];
+                old_filtered_y = new float[2];
+                old_filtered_z = new float[2];
+                old_p_x_xaxis = new float[2];
+                old_p_x_yaxis = new float[2];
+                old_p_x_zaxis = new float[2];
                 hands_out_of_view = true;
             }
         }
@@ -961,6 +948,8 @@ public class Triple_axis_V1 : MonoBehaviour
             asar.Terminate();
             Application.Quit();
         }
+        print(timeElapsed);
     }
 }
+
 #endif
