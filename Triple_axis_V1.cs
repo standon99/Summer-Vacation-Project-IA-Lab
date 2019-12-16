@@ -977,7 +977,7 @@ public class Triple_axis_V1 : MonoBehaviour
                 indexThumbMidV_Y = new float[2, 5];
                 indexThumbMidV_Z = new float[2, 5];
 
-                // Ensure time elapsed doesn't keep growing (could cause the posiiton prediction in the Kalman function to be inflated)
+                // Ensure time elapsed doesn't keep growing (could cause the position prediction in the Kalman function to be inflated)
                 timeElapsed = 0;
 
                 // Reset hand in frame time
@@ -1019,6 +1019,4 @@ public class Triple_axis_V1 : MonoBehaviour
         //print(timeElapsed);
     }
 }
-
-
 #endif
