@@ -36,15 +36,9 @@ public class Triple_axis_V1 : MonoBehaviour
     private bool full_vol = false, hands_out_of_view = false;
     private bool interaction_box = true;
     public bool trackFinger = true, pinchBool = true, applyKalmanFiltering = true;
-    public bool trackPalm = false, freeze = false, gainFunction = false, toggleHaptics = false, discretizeAxes = false, hapticTracking = true;
-
-    //InteractionBox interactionBox;
+    public bool trackPalm = false, freeze = false, gainFunction = false, toggleHaptics = false, discretizeAxes = false, hapticTracking = true, drawCube = false;
 
     public int itr = 0, xSteps = 4, ySteps = 4, zSteps = 4;
-
-    int xNMinusOne;
-    int xN;
-    int gain;
 
     // Position vectors for trackable objects
     private Vector handCenter, fingerTip, thumbTip, middleFingerTip, thumbJoint, indexJoint;
@@ -57,7 +51,7 @@ public class Triple_axis_V1 : MonoBehaviour
     private Vector handCenterV;
     private float[] old_pos_x_hand = new float[2];
     private float x_axis_hand;
-    private float[] fingerTipV_x = new float[5], fingerTipV_z = new float[5], fingerTipV_y = new float[5], thumbTipV = new float[5], indexThumbMidV_X = new float[5], indexThumbMidV_Y = new float[5], indexThumbMidV_Z = new float[5];
+    private float[,] fingerTipV_x = new float[2,5], fingerTipV_z = new float[2,5], fingerTipV_y = new float[2,5], thumbTipV = new float[2,5], indexThumbMidV_X = new float[2,5], indexThumbMidV_Y = new float[2,5], indexThumbMidV_Z = new float[2,5];
     private float [] oldFingerTipV = new float[2];
     private float[] oldThumbTipV = new float[2];
    
@@ -108,18 +102,35 @@ public class Triple_axis_V1 : MonoBehaviour
     public int[,] pinchHistory = new int[2,5];
     public float pinchAvg = 0;
     public float[,] pinchDistHistory = new float[2,5];
-    public int[] yAxis = { 1, 0 }, xAxis = { 3, 2 }, zAxis = { 5, 4 };
+    public int[] yAxis = { 0, 1 }, xAxis = { 3, 2 }, zAxis = { 5, 4 };
 
     ArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
 
-    //Vector interactionBox;
-
+    /* Function to identify hand gestures
+     * Inputs:
+     * - thumbTip - Position of tip of thumb
+     * - fingerTip - Position of index finger tip
+     * - palmPos - position of center of the palm of the hand
+     * - middleFingerTip- Position vector of the tip of the middle finger
+     * - indexFinger - Finger object for the index finger
+     * - ringFinger - Finger object for the ring finger
+     * - littleFinger - Finger object for the little finger
+     * Outputs:
+     * - gesture- A string storing the name of the identified gesture, can be either "pinch", 
+     * "fist" or "x/y/z point".
+     * Function - 
+     * Accpts the relevant parametrs- finds absolute distance from the tip of the index finger 
+     * to the tip of the thumb. Directions of other fingers are also considered. If a fist (when finegrs clenched)
+     * or if  otehr fingers not pointing in simialr directions, assumed not to be pinch.
+     * If dist. between thumb tip and finger tip is smaller than 45, we are assumed to making a pinch gesture (provided
+     * above criteria also met)
+     */
     string gestureRecognition(Vector thumbTip, Vector fingerTip, Vector palmPos, Vector middleFingerTip, Finger indexfinger, Finger ringFinger, Finger littleFinger)
     {
         // String to store measured gesture type
         string gesture = "none";
 
-        if (handInFrameT > 60)
+        if (handInFrameT > 100)
         {
             // Summation of pinch values for calculating the average
             float pinchSum = 0;
@@ -161,9 +172,9 @@ public class Triple_axis_V1 : MonoBehaviour
             Vector littleFingerDir = littleFinger.Direction;
 
             bool xPass = false, yPass = false, zPass = false;
-            if ((Math.Abs(ringFingerDir.x) >= Math.Abs((0 * littleFingerDir.x))) && (Math.Abs(ringFingerDir.x) <= Math.Abs(2.5 * littleFingerDir.x))) xPass = true; print(xPass);
-            if ((Math.Abs(ringFingerDir.y) >= Math.Abs((0 * littleFingerDir.y))) && (Math.Abs(ringFingerDir.y) <= Math.Abs(2.5 * littleFingerDir.y))) yPass = true; print(yPass);
-            if ((Math.Abs(ringFingerDir.z) >= Math.Abs((0 * littleFingerDir.z))) && (Math.Abs(ringFingerDir.z) <= Math.Abs(2.5 * littleFingerDir.z))) zPass = true; print(zPass); print("----");
+            if ((Math.Abs(ringFingerDir.x) >= Math.Abs((0 * littleFingerDir.x))) && (Math.Abs(ringFingerDir.x) <= Math.Abs(2.2 * littleFingerDir.x))) xPass = true; print(xPass);
+            if ((Math.Abs(ringFingerDir.y) >= Math.Abs((0 * littleFingerDir.y))) && (Math.Abs(ringFingerDir.y) <= Math.Abs(2.2 * littleFingerDir.y))) yPass = true; print(yPass);
+            if ((Math.Abs(ringFingerDir.z) >= Math.Abs((0 * littleFingerDir.z))) && (Math.Abs(ringFingerDir.z) <= Math.Abs(2.2 * littleFingerDir.z))) zPass = true; print(zPass); print("----");
 
             bool xPoint = false, yPoint = false, zPoint = false;
             if (Math.Abs(indexFingerDir.x) > 0.94 && Math.Abs(indexFingerDir.x) < 1.04) xPoint = true; //print(xPoint);
@@ -318,9 +329,9 @@ public class Triple_axis_V1 : MonoBehaviour
         else
         {
             // Set minimum value in interaction box of the motion controller along x, y, and z in format {x,y,z}
-            int[] xyz_max = { 120, 300, 100 };
+            int[] xyz_max = { 150, 300, 120 };
             // Set maximum value in interaction box of the motion controller along x, y, and z in format {x,y,z}
-            int[] xyz_min = { -120, 100, -100 };
+            int[] xyz_min = { -150, 100, -120 };
 
             for (int i = 0; i < 3; i++)
             {
@@ -395,14 +406,15 @@ public class Triple_axis_V1 : MonoBehaviour
      * NOTE ALSO in this function xt, x_predict and x_prior are general variables (not necesarily correlated only with the x axis).
      */
 
-    float[] kalmanFilter(float x_pos, int itr, float[] velocity, float x_prior, float p_prior, float deltaT)
+    float[] kalmanFilter(float x_pos, int itr, float[,] velocity, float x_prior, float p_prior, float deltaT, int j)
     {
         float xt = 0; // Filtered value
         float gain;
         float noiseEst = (float)1;
         float[] results = new float[3];
         float x_predict;
-        float q = (float)0.35; // Reflects confidence in the model used (lower means more accurate)
+        
+        float q = (float)0.35; // Reflects confidence in the model used (lower means more accurate) //0.35
         float p_predict;
         float pt;
         float velocityAvg = 0;
@@ -417,7 +429,7 @@ public class Triple_axis_V1 : MonoBehaviour
         // Compute moving mean of velocity values
         for (int i = 0; i < arrayMax; i++)
         {
-            velocitySum = velocity[i];
+            velocitySum = velocity[j, i];
         }
         velocityAvg = velocitySum / arrayMax;
 
@@ -442,29 +454,77 @@ public class Triple_axis_V1 : MonoBehaviour
             deltaT = 20;
         }
 
-        /*
-        if ((x_prior - (velocityAvg * deltaT)) < 0)
-        {
-            UnityEngine.Debug.Log("ERROR");
-        }
-       */
-
         // ----------------------------------------------------------------------------Update Stage----------------------------------------------------------------------------------------
         gain = p_predict / (p_predict + noiseEst);
-
         xt = x_predict + gain * (x_pos - x_predict);
-
         pt = (1 - gain) * p_prior;
-
-        //UnityEngine.Debug.Log("Kalman Filter Engaged");
-        //print(gain);
 
         // Results array with filtered value at first index and covariant matrix value (pt) in second position
         results[0] = xt;
         results[1] = pt;
-        //print(pt);
         return results;
     }
+
+    public void snapTo(Vector thumbPos, Vector indexPos)
+    {
+        Vector3 thumbPos2;
+        thumbPos2.x = thumbPos.x;
+        thumbPos2.y = thumbPos.y;
+        thumbPos2.z = thumbPos.z;
+
+        Vector3 indexPos2;
+        indexPos2.x = indexPos.x;
+        indexPos2.y = indexPos.y;
+        indexPos2.z = indexPos.z;
+
+        Vector3 minVector = Vector3.Min(thumbPos2, indexPos2);
+        Vector3 maxVector = Vector3.Max(thumbPos2, indexPos2);
+
+       // minVector = minVector + Vector3.one / 2f;
+       // maxVector = maxVector + Vector3.one / 2f;
+
+        
+        int xmax = (int)(1023f * (1f - minVector.x));
+        int ymin = (int)(1023f * minVector.y);
+        int zmin = (int)(1023f * minVector.z);
+        int xmin = (int)(1023f * (1f - maxVector.x));
+        int ymax = (int)(1023f * maxVector.y);
+        int zmax = (int)(1023f * maxVector.z);
+        
+        /*
+        float xmin = minVector.x;
+        float ymin = minVector.y;
+        float zmin = minVector.z;
+
+        float xmax = maxVector.x;
+        float ymax = maxVector.y;
+        float zmax = maxVector.z;
+        */
+
+        float[] minVals = { xmin, ymin, zmin };
+        float[] maxVals = { xmax, ymax, zmax };
+        // float[] minData = normalizedData(minVals);
+        // float[] maxData = normalizedData(maxVals);
+
+        /*
+        asar.SendMessage(0, (int)minData[0]);
+        asar.SendMessage(2, (int)minData[1]);
+        asar.SendMessage(4, (int)minData[2]);
+        asar.SendMessage(1, (int)maxData[0]);
+        asar.SendMessage(3, (int)maxData[1]);
+        asar.SendMessage(5, (int)maxData[2]);
+        */
+
+        asar.SendMessage(0, xmin);
+        asar.SendMessage(2, ymin);
+        asar.SendMessage(4, zmin);
+        asar.SendMessage(1, xmax);
+        asar.SendMessage(3, ymax);
+        asar.SendMessage(5, zmax);
+        //print("min: " + minVector.ToString("G6") + "max " + maxVector.ToString("G6"));
+        //print(xmin.ToString() + ymin.ToString() + zmin.ToString());
+    }
+
 
     /* Function to compute the velocity of a point ALONG AN AXIS given its present position, past position, and time between measurements
     * Inputs:
@@ -504,6 +564,8 @@ public class Triple_axis_V1 : MonoBehaviour
         //haptics = new ArduinoSlidesAndRotary.ArduinoReader(COM, 2000000);
     }
 
+
+
     // Update is called once per frame
     void Update()
     {
@@ -539,6 +601,12 @@ public class Triple_axis_V1 : MonoBehaviour
             // 
             Frame frame = controller.Frame();
             //interactionBox = frame.InteractionBox;
+            stopwatch.Stop();
+            timeElapsed = (int)stopwatch.ElapsedMilliseconds; // Record time between frames
+            stopwatch.Reset(); // Reset stopwatch function
+            
+            // Start timer to find runtime of each frame
+            stopwatch.Start();
 
             int numberHands = frame.Hands.Count;
             // if statement to check if there are any hands in the frame
@@ -546,23 +614,22 @@ public class Triple_axis_V1 : MonoBehaviour
             {
                 for (i = 0; i < numberHands; i++)
                 {
-                   
+              
                     handInFrameT += (int)timeElapsed;
                     hands_out_of_view = false;
                     List<Hand> hands = frame.Hands;
+                    
+                    if (hands[0].IsRight && numberHands > 1)
+                    {
+                        Hand Handholder = hands[0];
+                        hands[0] = hands[1];
+                        hands[1] = Handholder;
+                    }
+                    
                     Hand Hand = hands[i];
-
                     if (trackFinger)
                     {
-                        // Halt previous stop watch run
-                        stopwatch.Stop();
-                        timeElapsed = (int)stopwatch.ElapsedMilliseconds; // Record time between frames
-                        stopwatch.Reset(); // Reset stopwatch function
-                                           // print(timeElapsed);
                         List<Finger> fingers = Hand.Fingers;
-
-                        // Start timer to find runtime of each frame
-                        stopwatch.Start();
 
                         // Create an object of type finger for the thumb, and index, middle, ring and little fingers
                         Finger thumb = fingers[0];
@@ -595,18 +662,18 @@ public class Triple_axis_V1 : MonoBehaviour
                         //print(midPThumbIndex.z);
 
                         // Call function to compute the velocity of finger tips
-                        fingerTipV_x[index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
-                        fingerTipV_y[index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
-                        fingerTipV_z[index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
+                        fingerTipV_x[i,index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
+                        fingerTipV_y[i,index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
+                        fingerTipV_z[i,index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
 
                         index = itr % 5;
 
                         //thumbTipV[index] = velocity(x_axis_thumb, old_pos_x_thumb[i], timeElapsed);
 
-                        // Velcoity of index finger and thumb midpoint
-                        indexThumbMidV_X[index] = velocity(midPThumbIndex.x, old_midPThumbIndex[i].x, timeElapsed);
-                        indexThumbMidV_Y[index] = velocity(midPThumbIndex.y, old_midPThumbIndex[i].y, timeElapsed);
-                        indexThumbMidV_Z[index] = velocity(midPThumbIndex.z, old_midPThumbIndex[i].z, timeElapsed);
+                        // Velocity of index finger and thumb midpoint
+                        indexThumbMidV_X[i,index] = velocity(midPThumbIndex.x, old_midPThumbIndex[i].x, timeElapsed);
+                        indexThumbMidV_Y[i,index] = velocity(midPThumbIndex.y, old_midPThumbIndex[i].y, timeElapsed);
+                        indexThumbMidV_Z[i,index] = velocity(midPThumbIndex.z, old_midPThumbIndex[i].z, timeElapsed);
 
                         // Tracking the position of the tip of the index finger in all three dimensions
                         old_pos_x_index[i] = x_axis_index;
@@ -642,7 +709,6 @@ public class Triple_axis_V1 : MonoBehaviour
                         trackPalm = false;
                     }
 
-
                     if (trackPalm)
                     {
                         // Tracking palm of hand
@@ -651,140 +717,140 @@ public class Triple_axis_V1 : MonoBehaviour
                         x_axis_hand = handCenter.x;
                     }
 
-
-                    if (gesture == "pinch") // x_axis_index > (old_pos_x_index[i] + 10) || x_axis_index < (old_pos_x_index[i] - 10)
+                    if (drawCube && i == 0)
                     {
-                        if (applyKalmanFiltering)
+                        snapTo(thumbTip, fingerTip);
+                    }
+                    else if(!drawCube)
+                    {
+                        if (gesture == "pinch") // x_axis_index > (old_pos_x_index[i] + 10) || x_axis_index < (old_pos_x_index[i] - 10)
                         {
-                            filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV_X, old_filtered_x[i], old_p_x_xaxis[i], (float)timeElapsed);
-                            old_filtered_x[i] = filtered_x[0];
-                            old_p_x_xaxis[i] = filtered_x[1];
-                            //print(filtered_x[1]);
-
-                            filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y[i], old_p_x_yaxis[i], (float)timeElapsed);
-                            old_filtered_y[i] = filtered_y[0];
-                            old_p_x_yaxis[i] = filtered_y[1];
-                            //print(filtered_y[1]);
-
-                            filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z[i], old_p_x_zaxis[i], (float)timeElapsed);
-                            old_filtered_z[i] = filtered_z[0];
-                            old_p_x_zaxis[i] = filtered_z[1];
-                            //print(filtered_z[1]);
-
-                            float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
-                            sent_data = normalizedData(sent_data_array);
-
-                            if ((midPThumbIndex.x != old_midPThumbIndex[i].x) && !toggleHaptics)
+                            if (applyKalmanFiltering)
                             {
-                                try
+                                filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV_X, old_filtered_x[i], old_p_x_xaxis[i], (float)timeElapsed, i);
+                                old_filtered_x[i] = filtered_x[0];
+                                old_p_x_xaxis[i] = filtered_x[1];
+                                print(filtered_x[1]);
+
+                                filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y[i], old_p_x_yaxis[i], (float)timeElapsed, i);
+                                old_filtered_y[i] = filtered_y[0];
+                                old_p_x_yaxis[i] = filtered_y[1];
+                                print(filtered_y[1]);
+
+                                filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z[i], old_p_x_zaxis[i], (float)timeElapsed, i);
+                                old_filtered_z[i] = filtered_z[0];
+                                old_p_x_zaxis[i] = filtered_z[1];
+                                print(filtered_z[1]);
+
+                                float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
+                                sent_data = normalizedData(sent_data_array);
+                                if (!toggleHaptics)
                                 {
-                                    asar.SendMessage(xAxis[i], (int)sent_data[0]);
-                                }
-                                catch (Exception e)
-                                {
-                                    print("EXCEPTION!");
-                                    print(e);
+                                    if (midPThumbIndex.x != old_midPThumbIndex[i].x)
+                                    {
+                                        try
+                                        {
+                                            asar.SendMessage(xAxis[i], (int)sent_data[0]);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            print("EXCEPTION!");
+                                            print(e);
+                                        }
+                                    }
+
+                                    if (midPThumbIndex.y != old_midPThumbIndex[i].y)
+                                    {
+                                        try
+                                        {
+                                            asar.SendMessage(yAxis[i], (int)sent_data[1]);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            print("EXCEPTION!");
+                                            print(e);
+                                        }
+                                    }
+
+                                    if (midPThumbIndex.z != old_midPThumbIndex[i].z)
+                                    {
+                                        try
+                                        {
+                                            asar.SendMessage(zAxis[i], (int)sent_data[2]);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            print("EXCEPTION!");
+                                            print(e);
+                                        }
+                                    }
+
+                                    if (toggleHaptics)
+                                    {
+                                        //print("Haptics Enabled");
+                                        if ((discretizeAxes == false) & (hapticTracking == true))
+                                        {
+                                            asar.SendMessage(xAxis[i], (int)sent_data[0]);
+                                            asar.haptic();
+                                            asar.SendMessage(yAxis[i], (int)sent_data[1]);
+                                            asar.haptic();
+                                            asar.SendMessage(zAxis[i], (int)sent_data[2]);
+                                            asar.haptic();
+                                        }
+                                    }
                                 }
                             }
-
-                            if ((midPThumbIndex.y != old_midPThumbIndex[i].y) && !toggleHaptics)
+                            else
                             {
-                                try
-                                {
-                                    asar.SendMessage(yAxis[i], (int)sent_data[1]);
-                                }
-                                catch (Exception e)
-                                {
-                                    print("EXCEPTION!");
-                                    print(e);
-                                }
-                            }
+                                // Normalize data for length of fader axis before sending
+                                float[] sent_data_array = { midPThumbIndex.x, midPThumbIndex.y, midPThumbIndex.z };
+                                sent_data = normalizedData(sent_data_array);
+                                //UnityEngine.Debug.Log("In loop");
+                                //print(sent_data);
 
-                            if ((midPThumbIndex.z != old_midPThumbIndex[i].z) && !toggleHaptics)
-                            {
-                                try
+                                if (midPThumbIndex.x != old_midPThumbIndex[i].x)
                                 {
-                                    asar.SendMessage(zAxis[i], (int)sent_data[2]);
+                                    try
+                                    {
+                                        asar.SendMessage(xAxis[i], (int)sent_data[0]);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        print("EXCEPTION!");
+                                        print(e);
+                                    }
                                 }
-                                catch (Exception e)
-                                {
-                                    print("EXCEPTION!");
-                                    print(e);
-                                }
-                            }
 
-                            if (toggleHaptics)
-                            {
-                                //print("Haptics Enabled");
-                                if ((discretizeAxes == false) & (hapticTracking == true))
+                                if (midPThumbIndex.y != old_midPThumbIndex[i].y)
                                 {
-                                    asar.SendMessage(xAxis[i], (int)sent_data[0]);
-                                    asar.haptic();
-                                    asar.SendMessage(yAxis[i], (int)sent_data[1]);
-                                    asar.haptic();
-                                    asar.SendMessage(zAxis[i], (int)sent_data[2]);
-                                    asar.haptic();
+                                    try
+                                    {
+                                        asar.SendMessage(yAxis[i], (int)sent_data[1]);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        print("EXCEPTION!");
+                                        print(e);
+                                    }
                                 }
-                            }
-                        }
-                        else
-                        {
-                            // Normalize data for length of fader axis before sending
-                            float[] sent_data_array = { midPThumbIndex.x, midPThumbIndex.y, midPThumbIndex.z };
-                            sent_data = normalizedData(sent_data_array);
-                            //UnityEngine.Debug.Log("In loop");
-                            //print(sent_data);
 
-                            if (midPThumbIndex.x != old_midPThumbIndex[i].x)
-                            {
-                                try
+                                if (midPThumbIndex.z != old_midPThumbIndex[i].z)
                                 {
-                                    asar.SendMessage(xAxis[i], (int)sent_data[0]);
-                                    //print("X DATA SENT");
-                                    //print((int)sent_data[0]);
-                                    // print("                   ");
-                                }
-                                catch (Exception e)
-                                {
-                                    print("EXCEPTION!");
-                                    print(e);
-                                }
-                            }
-
-                            if (midPThumbIndex.y != old_midPThumbIndex[i].y)
-                            {
-                                try
-                                {
-                                    asar.SendMessage(yAxis[i], (int)sent_data[1]);
-                                    // print("Y DATA SENT");
-                                    // print((int)sent_data[1]);
-                                    //  print("                   ");
-                                }
-                                catch (Exception e)
-                                {
-                                    print("EXCEPTION!");
-                                    print(e);
-                                }
-                            }
-
-                            if (midPThumbIndex.z != old_midPThumbIndex[i].z)
-                            {
-                                try
-                                {
-                                    asar.SendMessage(zAxis[i], (int)sent_data[2]);
-                                    //  print("Z DATA SENT");
-                                    //  print((int)sent_data[2]);
-                                    //  print("                   ");
-                                }
-                                catch (Exception e)
-                                {
-                                    print("EXCEPTION!");
-                                    print(e);
+                                    try
+                                    {
+                                        asar.SendMessage(zAxis[i], (int)sent_data[2]);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        print("EXCEPTION!");
+                                        print(e);
+                                    }
                                 }
                             }
                         }
                     }
-
+                   
+                    /*
                     else if (gesture == "x point" || gesture == "y point" || gesture == "z point")
                     {
                         if (applyKalmanFiltering)
@@ -893,6 +959,7 @@ public class Triple_axis_V1 : MonoBehaviour
                             }
                         }
                     }
+                    */
                 }
             }
             else
@@ -901,14 +968,14 @@ public class Triple_axis_V1 : MonoBehaviour
                 filtered_x = new float[2];
                 filtered_y = new float[2];
                 filtered_z = new float[2];
-                fingerTipV_x = new float[5];
-                fingerTipV_y = new float[5];
-                fingerTipV_z = new float[5];
-                thumbTipV = new float[5];
+                fingerTipV_x = new float[2, 5];
+                fingerTipV_y = new float[2, 5];
+                fingerTipV_z = new float[2, 5];
+                thumbTipV = new float[2, 5];
 
-                indexThumbMidV_X = new float[5];
-                indexThumbMidV_Y = new float[5];
-                indexThumbMidV_Z = new float[5];
+                indexThumbMidV_X = new float[2, 5];
+                indexThumbMidV_Y = new float[2, 5];
+                indexThumbMidV_Z = new float[2, 5];
 
                 // Ensure time elapsed doesn't keep growing (could cause the posiiton prediction in the Kalman function to be inflated)
                 timeElapsed = 0;
@@ -948,8 +1015,10 @@ public class Triple_axis_V1 : MonoBehaviour
             asar.Terminate();
             Application.Quit();
         }
-        print(timeElapsed);
+
+        //print(timeElapsed);
     }
 }
+
 
 #endif
