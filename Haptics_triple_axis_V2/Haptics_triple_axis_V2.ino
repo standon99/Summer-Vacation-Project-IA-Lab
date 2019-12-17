@@ -1,5 +1,6 @@
 #include <Arduino.h>
-
+bool mov = true;
+int old_id = 7;
 const int nbSlider = 6;
 const int numReadings = 20;
 int readIndex = 0;
@@ -14,7 +15,7 @@ int ROT_B[nbAxe] = {21, 3, 19};
 int ROT_A[nbAxe] = {20, 2, 18};
 int buttonSwitch[nbAxe] = {17, 10, 22};
 const float minForce = 256;
-const float maxForce = 8;
+const float maxForce = 50;
 const int resolution = minForce;
 const int maxStep = maxForce;
 float listPosf0[resolution + 1];
@@ -27,9 +28,10 @@ const int nbData = maxForce;
 //float data0[nbData] = {3, 6, 9, 12, 15, 18, 21, 60, 63, 66, 69, 72, 75, 78, 81};
 //float data1[nbData] = {3, 6, 9, 12, 15, 18, 21, 60, 63, 66, 69, 72, 75, 78, 81};
 //float data2[nbData] =  {3, 6, 9, 12, 15, 18, 21, 60, 63, 66, 69, 72, 75, 78, 81};
-float data0[nbData] = {0, 1, 2, 3, 4, 4, 4, 0};
-float data1[nbData] = {0, 4, 0, 4, 0, 4, 0, 4}; // 10 replaced 4
-float data2[nbData] = {0, 1, 4, 3, 4, 2, 0}; //{0, 1, 2, 3, 4, 4, 4, 2, 1, 0};
+float data0[nbData] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10 ,10 ,10 , 10, 10, 10 , 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; //{0, 1, 2, 3, 4, 4, 4, 0};
+float data1[nbData] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10 ,10 ,10 , 10, 10, 10 , 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; // 10 replaced 4
+float data2[nbData] = {0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,0 ,0 , 0, 200, 200 , 200, 200, 200, 200, 200, 200, 200, 200, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; //{0, 1, 2, 3, 4, 4, 4, 2, 1, 0};
+
 float minData;
 float maxData;
 int indice0, indice1, indice2 = 0;
@@ -53,8 +55,20 @@ bool isFollowing = false;
 float data[nbData];
 void setup() {
   Serial.begin(2000000);
-
-
+  /*
+    for (int i = 0; i < nbData; i++)
+    {
+    data0[i] = random(0,10);
+    }
+    for (int i = 0; i < nbData; i++)
+    {
+    data1[i] = random(0,10);
+    }
+    for (int i = 0; i < nbData; i++)
+    {
+    data2[i] = random(0,10);
+    }
+  */
   //---------------------------------------------- Set PWM frequency for D4 & D13 ------------------------------
   TCCR0B = TCCR0B & B11111000 | B00000001;    // set timer 0 divisor to     1 for PWM frequency of 62500.00 Hz
   //---------------------------------------------- Set PWM frequency for D11 & D12 -----------------------------
@@ -343,7 +357,68 @@ void sliderToVal(int id, int val) {
   }
 }
 
+void newHapticFunc()
+{
+  for (int k = 0; k < 6; k++)
+  {
+    int currPosition = analogRead(slider[k]);
+    //float data[nbData] = {0,5,10,100,100,10,5,0};
+    if (k == 0 || k == 1)
+    {
+      for (int y = 0; y < nbData; y++)
+      {
+        data[y] = data0[y];
+      }
+    }
+    else if (k == 2 || k == 3)
+    {
+      for (int y = 0; y < nbData; y++)
+      {
+        data[y] = data1[y];
+      }
+    }
+    else if (k == 4 || k == 5)
+    {
+      for (int y = 0; y < nbData; y++)
+      {
+        data[y] = data2[y];
+      }
+    }
 
+    int intervals = 1023 / (nbData - 1);
+    int intervalCount = 0, Cnt = 0;
+
+    Cnt = currPosition/intervals;
+    intervalCount = intervals * Cnt;
+    int currData = data[Cnt];
+    if (k == 3) Serial.println(currData); Serial.println("                ");
+    intervals = 1023 / (currData * 10);
+    if (currData == 0) intervals = 1023/2;
+    //intervalCount = 0
+    if (intervals > 20) mov = false;
+    if (currPosition > (intervalCount + (intervals / 2) + 3) && !(currPosition > 1022 || currPosition < 1) && mov)
+    {
+      digitalWrite(motorSwitch[k], HIGH);
+      digitalWrite(motorPinPlus[k], HIGH);
+      digitalWrite(motorPinMinus[k], LOW);
+      Serial.println("LEFT");
+    }
+    else if (currPosition < (intervalCount + (intervals / 2) - 3) && !(currPosition > 1022 || currPosition < 1) && mov)
+    {
+      digitalWrite(motorSwitch[k], HIGH);
+      digitalWrite(motorPinPlus[k], LOW);
+      digitalWrite(motorPinMinus[k], HIGH);
+      Serial.println("RIGHT");
+    }
+    else
+    {
+      digitalWrite(motorSwitch[k], LOW);
+      digitalWrite(motorPinPlus[k], LOW);
+      digitalWrite(motorPinMinus[k], LOW);
+    }
+    mov = true;
+  }
+}
 
 
 //
@@ -370,7 +445,7 @@ void sliderToVal(int id, int val) {
 //}
 //________________________________________________________________________________________________
 void loop() {
-  Serial.println(analogRead(A0));
+  //Serial.println(analogRead(A0));
   for (int i = 0; i < nbSlider; i++) {
     tabPos[i][readIndex] = analogRead(slider[i]);
     pos[i] = 0;
@@ -404,8 +479,8 @@ void loop() {
   Serial.print("\n");
   if (Serial.available() > 0) {
     message = Serial.readStringUntil('\n');
+    old_id = id;
     id = message[0] - '0';
-    //id = 8;
     if (id >= 0 && id <= 5) {
       mode = 0;
       digit1 = message[2] - '0';
@@ -426,12 +501,14 @@ void loop() {
         isFollowing = false;
       }
     }
-    else if (id == 7) {
+    else if (id == 7 || old_id == 7) {
       //mode = 1;
       //indice0 = 0;
       //indice1 = 0;
       //indice2 = 0;
       //fillHaptic();
+    ///////////////////
+    newHapticFunc();
     }
     else if (id == 8) {
       mode = 1;
@@ -485,67 +562,8 @@ void loop() {
   }
 
 
-/*
-  for (int k = 0; k < 6; k++)
-  {
-    int currPosition = analogRead(k);
-    //float data[nbData] = {0,5,10,100,100,10,5,0};
-    if (k == 0 || k == 1)
-    {
-      for (int y = 0; y < nbData; y++)
-      {
-        data[y] = data0[y];
-      }
-    }
-    else if (k == 2 || k == 3)
-    {
-      for (int y = 0; y < nbData; y++)
-      {
-        data[y] = data1[y];
-      }
-    }
-    else if (k == 4 || k == 5)
-    {
-      for (int y = 0; y < nbData; y++)
-      {
-        data[y] = data2[y];
-      }
-    }
 
-    int intervals = 1023 / (nbData - 1);
-    int intervalCount = 0, Cnt = 0;
-    while (intervalCount < currPosition)
-    {
-      intervalCount += intervals;
-      Cnt++;
-    }
-    int currData = data[Cnt];
-    intervals = 1023 / currData;
-    intervalCount = 0;
-    while (intervalCount < currPosition)
-    {
-      intervalCount += intervals;
-    }
-    if (currPosition > (intervalCount + (intervals / 2) + 2))
-    {
-      digitalWrite(motorSwitch[k], HIGH);
-      digitalWrite(motorPinPlus[k], HIGH);
-      digitalWrite(motorPinMinus[k], LOW);
-    }
-    else if (currPosition < (intervalCount + (intervals / 2) - 2))
-    {
-      digitalWrite(motorSwitch[k], HIGH);
-      digitalWrite(motorPinPlus[k], LOW);
-      digitalWrite(motorPinMinus[k], HIGH);
-    }
-    else
-    {
-      digitalWrite(motorSwitch[k], LOW);
-      digitalWrite(motorPinPlus[k], LOW);
-      digitalWrite(motorPinMinus[k], LOW);
-    }
-  }
-*/
+  
 }
 //________________________________________________________________________________________________
 void updateEncoder0() {
