@@ -573,10 +573,10 @@ public class Triple_axis_V1 : MonoBehaviour
         {
             if (toggleHaptics)
             {
-                if (discretizeAxes == false)
+                if (!discretizeAxes)
                 {
                     //asar.regularStep(0, 0, 0);
-                    asar.haptic();
+                    asar.haptic(); 
                 }
                 else if (discretizeAxes)
                 {
@@ -788,14 +788,11 @@ public class Triple_axis_V1 : MonoBehaviour
                                     if (toggleHaptics)
                                     {
                                         //print("Haptics Enabled");
-                                        if ((discretizeAxes == false) & (hapticTracking == true))
+                                        if ((discretizeAxes == false) && (hapticTracking == true))
                                         {
                                             asar.SendMessage(xAxis[i], (int)sent_data[0]);
-                                            asar.haptic();
                                             asar.SendMessage(yAxis[i], (int)sent_data[1]);
-                                            asar.haptic();
                                             asar.SendMessage(zAxis[i], (int)sent_data[2]);
-                                            asar.haptic();
                                         }
                                     }
                                 }

@@ -3,7 +3,8 @@ bool mov = true;
 int old_id = 7;
 const int nbSlider = 6;
 const int numReadings = 20;
-int readIndex = 0, steps;
+int readIndex = 0;
+int steps = 0;
 int tabPos[nbSlider][numReadings];
 float pos[nbSlider];
 int slider[nbSlider] = {A0, A1, A2, A3, A4, A5};
@@ -31,7 +32,6 @@ const int nbData = maxForce;
 float data0[nbData] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10 , 10 , 10 , 10, 10, 10 , 10, 10, 0, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; //{0, 1, 2, 3, 4, 4, 4, 0};
 float data1[nbData] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10 , 10 , 10 , 10, 10, 10 , 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; // 10 replaced 4
 float data2[nbData] = {0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 , 0 , 0 , 0, 200, 200 , 200, 200, 200, 200, 200, 200, 200, 200, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; //{0, 1, 2, 3, 4, 4, 4, 2, 1, 0};
-
 float minData;
 float maxData;
 int indice0, indice1, indice2 = 0;
@@ -363,6 +363,7 @@ void newHapticFunc()
   {
     int currPosition = analogRead(slider[k]);
     //float data[nbData] = {0,5,10,100,100,10,5,0};
+
     if (k == 0 || k == 1)
     {
       for (int y = 0; y < nbData; y++)
@@ -392,7 +393,7 @@ void newHapticFunc()
     intervalCount = intervals * Cnt;
     int currData = data[Cnt];
     if (k == 3) Serial.println(currData); Serial.println("                ");
-    intervals = 1023 / (currData*5);
+    intervals = 1023 / (currData * 5);
     if (currData == 0) intervals = 1023 / 2;
     //intervalCount = 0
     if (intervals > 20) mov = false;
@@ -401,14 +402,12 @@ void newHapticFunc()
       digitalWrite(motorSwitch[k], HIGH);
       digitalWrite(motorPinPlus[k], HIGH);
       digitalWrite(motorPinMinus[k], LOW);
-      Serial.println("LEFT");
     }
     else if (currPosition < (intervalCount + (intervals / 2) - 3) && !(currPosition > 1022 || currPosition < 1) && mov)
     {
       digitalWrite(motorSwitch[k], HIGH);
       digitalWrite(motorPinPlus[k], LOW);
       digitalWrite(motorPinMinus[k], HIGH);
-      Serial.println("RIGHT");
     }
     else
     {
@@ -420,6 +419,50 @@ void newHapticFunc()
   }
 }
 
+void discreteAxes(int digit1, int digit2, int digit3)
+{
+  for (int k = 0; k < 6; k++)
+  {
+    int currPosition = analogRead(slider[k]);
+    
+    int value;   
+    if (k == 0 || k == 1)
+    {
+      steps = digit1;
+      //Serial.println(digit1);
+    }
+    else if (k == 2 || k == 3)
+    {
+      steps = digit2;
+    }
+    else if (k == 4 || k == 5)
+    {
+      steps = digit3;
+    }
+    int Cnt2 = currPosition / (1023 / steps);
+    int intervalCount2 = (1023 / steps) * Cnt2;
+    int val2 = (intervalCount2 + ((1023 / steps) / 2));
+    
+    if (currPosition > (intervalCount2 + ((1023 / steps) / 2) + 100))
+    {
+      digitalWrite(motorSwitch[k], HIGH);
+      digitalWrite(motorPinPlus[k], HIGH);
+      digitalWrite(motorPinMinus[k], LOW);
+    }
+    else if (currPosition < (intervalCount2 + ((1023 / steps) / 2) - 100))
+    {
+      digitalWrite(motorSwitch[k], HIGH);
+      digitalWrite(motorPinPlus[k], LOW);
+      digitalWrite(motorPinMinus[k], HIGH);
+    }
+    else
+    {
+      digitalWrite(motorSwitch[k], LOW);
+      digitalWrite(motorPinPlus[k], LOW);
+      digitalWrite(motorPinMinus[k], LOW);
+    }
+  }
+}
 
 //
 //void sliderToVal(int id, int val) {
@@ -458,23 +501,23 @@ void loop() {
     pos[i] /= numReadings;
   }
   for (int i = 0; i < nbSlider; i++) {
-    Serial.print(round(pos[i]));
-    Serial.print(" ");
+    // Serial.print(round(pos[i]));
+    // Serial.print(" ");
   }
   for (int i = 0; i < 3; i++) {
-    Serial.print(encoderValue[i]);
-    Serial.print(" ");
+    // Serial.print(encoderValue[i]);
+    //Serial.print(" ");
     if (digitalRead(buttonSwitch[i])) {
-      Serial.print("0");
+      // Serial.print("0");
     }
     else {
-      Serial.print("1");
+      //Serial.print("1");
     }
-    Serial.print(" ");
+    //Serial.print(" ");
   }
   for (int i = 0; i < nbSlider; i++) {
-    Serial.print(moveSlider[i]);
-    Serial.print(" ");
+    //Serial.print(moveSlider[i]);
+    //Serial.print(" ");
   }
   Serial.print("\n");
   if (Serial.available() > 0) {
@@ -511,63 +554,22 @@ void loop() {
       newHapticFunc();
     }
     else if (id == 8) {
-      /*
-        mode = 1;
-        indice0 = 0;
-        indice1 = 0;
-        indice2 = 0;
-        for (int i = 0; i < nbAxe; i++) {
+
+      // mode = 1;
+      // indice0 = 0;
+      //indice1 = 0;
+      //indice2 = 0;
+      for (int i = 0; i < nbAxe; i++) {
         digit1 = message[2 + 5 * i] - '0';
         digit2 = message[3 + 5 * i] - '0';
         digit3 = message[4 + 5 * i] - '0';
         digit4 = message[5 + 5 * i] - '0';
         nbStepAxe[i] = digit1 * 1000 + digit2 * 100 + digit3 * 10 + digit4;
-        nbStepAxe[i] = abs(nbStepAxe[i]) % 256;
-        }
-        fillRegularStep(nbStepAxe[0], nbStepAxe[1], nbStepAxe[2]);
-      */
-      digit1 = 3;
-      digit2 = 3;
-      digit3 = 3;
-      for (int k = 0; k < 6; k++)
-      {
-        int currPosition = analogRead(slider[k]);
-        if (k == 0 || k == 1)
-        {
-          steps = digit1;
-          //Serial.println(digit1);
-        }
-        else if (k == 2 || k == 3)
-        {
-          steps = digit2;
-        }
-        else if (k == 4 || k == 5)
-        {
-          steps = digit3;
-        }
-        int Cnt2 = currPosition / steps;
-        int intervalCount = steps * Cnt2;
-        if (currPosition > (intervalCount + ((1023/steps)/2) + 3))
-        {
-          digitalWrite(motorSwitch[k], HIGH);
-          digitalWrite(motorPinPlus[k], HIGH);
-          digitalWrite(motorPinMinus[k], LOW);
-          Serial.println("LEFT");
-        }
-        else if (currPosition < (intervalCount + ((1023/steps)/2) - 3))
-        {
-          digitalWrite(motorSwitch[k], HIGH);
-          digitalWrite(motorPinPlus[k], LOW);
-          digitalWrite(motorPinMinus[k], HIGH);
-          Serial.println("RIGHT");
-        }
-        else
-        {
-          digitalWrite(motorSwitch[k], LOW);
-          digitalWrite(motorPinPlus[k], LOW);
-          digitalWrite(motorPinMinus[k], LOW);
-        }
+        //nbStepAxe[i] = abs(nbStepAxe[i]) % 256;
       }
+      //fillRegularStep(nbStepAxe[0], nbStepAxe[1], nbStepAxe[2]);
+
+      discreteAxes(nbStepAxe[0], nbStepAxe[1], nbStepAxe[2]);
     }
     else if (id == 9) {
       followedSlider = message[3] - '0';
@@ -605,9 +607,9 @@ void loop() {
     }
   }
 
-
-
-
+  ///////////
+  ///////////
+  //delay(100);
 }
 //________________________________________________________________________________________________
 void updateEncoder0() {
