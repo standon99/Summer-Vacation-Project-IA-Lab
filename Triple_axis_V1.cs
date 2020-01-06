@@ -95,7 +95,7 @@ public class Triple_axis_V1 : MonoBehaviour
     public Stopwatch stopwatch = new Stopwatch();
 
     // Arduino COM Port for Serial Communication
-    public string COM = "COM3";
+    public string COM = "COM14";
 
     // Variable to store gesture type
     public string gesture;
@@ -161,10 +161,10 @@ public class Triple_axis_V1 : MonoBehaviour
 
             // Use Pythag. in 3D to find absolute distance between little finger and palm 
             float littleFPDist = (float)Math.Sqrt(Math.Pow(((double)littleFingerPos.x - (double)palmPos.x), 2) + Math.Pow(((double)littleFingerPos.y - (double)palmPos.y), 2) + Math.Pow(((double)littleFingerPos.z - (double)palmPos.z), 2));
-            print(littleFPDist);
+            //print(littleFPDist);
             // Use Pythag. in 3D to find absolute distance between ring finger and palm 
             float ringFPDist = (float)Math.Sqrt(Math.Pow(((double)ringFingerPos.x - (double)palmPos.x), 2) + Math.Pow(((double)ringFingerPos.y - (double)palmPos.y), 2) + Math.Pow(((double)ringFingerPos.z - (double)palmPos.z), 2));
-            print(ringFPDist);
+            //print(ringFPDist);
 
             // Define vectors holding the direction each finger points in
             Vector indexFingerDir = indexfinger.Direction;
@@ -172,9 +172,9 @@ public class Triple_axis_V1 : MonoBehaviour
             Vector littleFingerDir = littleFinger.Direction;
 
             bool xPass = false, yPass = false, zPass = false;
-            if ((Math.Abs(ringFingerDir.x) >= Math.Abs((0 * littleFingerDir.x))) && (Math.Abs(ringFingerDir.x) <= Math.Abs(2.2 * littleFingerDir.x))) xPass = true; print(xPass);
-            if ((Math.Abs(ringFingerDir.y) >= Math.Abs((0 * littleFingerDir.y))) && (Math.Abs(ringFingerDir.y) <= Math.Abs(2.2 * littleFingerDir.y))) yPass = true; print(yPass);
-            if ((Math.Abs(ringFingerDir.z) >= Math.Abs((0 * littleFingerDir.z))) && (Math.Abs(ringFingerDir.z) <= Math.Abs(2.2 * littleFingerDir.z))) zPass = true; print(zPass); print("----");
+            if ((Math.Abs(ringFingerDir.x) >= Math.Abs((0 * littleFingerDir.x))) && (Math.Abs(ringFingerDir.x) <= Math.Abs(2.2 * littleFingerDir.x))) xPass = true; //print(xPass);
+            if ((Math.Abs(ringFingerDir.y) >= Math.Abs((0 * littleFingerDir.y))) && (Math.Abs(ringFingerDir.y) <= Math.Abs(2.2 * littleFingerDir.y))) yPass = true; //print(yPass);
+            if ((Math.Abs(ringFingerDir.z) >= Math.Abs((0 * littleFingerDir.z))) && (Math.Abs(ringFingerDir.z) <= Math.Abs(2.2 * littleFingerDir.z))) zPass = true; //print(zPass); print("----");
 
             bool xPoint = false, yPoint = false, zPoint = false;
             if (Math.Abs(indexFingerDir.x) > 0.94 && Math.Abs(indexFingerDir.x) < 1.04) xPoint = true; //print(xPoint);
@@ -449,9 +449,9 @@ public class Triple_axis_V1 : MonoBehaviour
         }
 
         // If time taken between frames with hands in them exceeds 20ms, set value to 20ms (as hands likely were removed from frame)
-        if (deltaT > 25)
+        if (deltaT > 40)
         {
-            deltaT = 20;
+            deltaT = 40;
         }
 
         // ----------------------------------------------------------------------------Update Stage----------------------------------------------------------------------------------------
@@ -663,8 +663,8 @@ public class Triple_axis_V1 : MonoBehaviour
 
                         // Call function to compute the velocity of finger tips
                         fingerTipV_x[i,index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
-                        fingerTipV_y[i,index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
-                        fingerTipV_z[i,index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
+                        fingerTipV_y[i,index] = velocity(y_axis_index, old_pos_y_index[i], timeElapsed);
+                        fingerTipV_z[i,index] = velocity(z_axis_index, old_pos_z_index[i], timeElapsed);
 
                         index = itr % 5;
 
@@ -702,7 +702,7 @@ public class Triple_axis_V1 : MonoBehaviour
                         gesture = gestureRecognition(thumbTip, fingerTip, handCenter, middleFingerTip, indexFinger, ringFinger, littleFinger);
                         if (gesture == "pinch")
                         {
-                            UnityEngine.Debug.Log("Pinch Activated");
+                            //UnityEngine.Debug.Log("Pinch Activated");
                         }
 
                         // If finger tracking is active, palm tracking should be inactivated
@@ -730,17 +730,17 @@ public class Triple_axis_V1 : MonoBehaviour
                                 filtered_x = kalmanFilter(midPThumbIndex.x, itr, indexThumbMidV_X, old_filtered_x[i], old_p_x_xaxis[i], (float)timeElapsed, i);
                                 old_filtered_x[i] = filtered_x[0];
                                 old_p_x_xaxis[i] = filtered_x[1];
-                                print(filtered_x[1]);
+                                //print(filtered_x[1]);
 
                                 filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y[i], old_p_x_yaxis[i], (float)timeElapsed, i);
                                 old_filtered_y[i] = filtered_y[0];
                                 old_p_x_yaxis[i] = filtered_y[1];
-                                print(filtered_y[1]);
+                               // print(filtered_y[1]);
 
                                 filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z[i], old_p_x_zaxis[i], (float)timeElapsed, i);
                                 old_filtered_z[i] = filtered_z[0];
                                 old_p_x_zaxis[i] = filtered_z[1];
-                                print(filtered_z[1]);
+                               // print(filtered_z[1]);
 
                                 float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
                                 sent_data = normalizedData(sent_data_array);
@@ -751,6 +751,7 @@ public class Triple_axis_V1 : MonoBehaviour
                                         try
                                         {
                                             asar.SendMessage(xAxis[i], (int)sent_data[0]);
+                                            print("SENT X");
                                         }
                                         catch (Exception e)
                                         {
@@ -764,6 +765,7 @@ public class Triple_axis_V1 : MonoBehaviour
                                         try
                                         {
                                             asar.SendMessage(yAxis[i], (int)sent_data[1]);
+                                            print("SENT Y");
                                         }
                                         catch (Exception e)
                                         {
@@ -777,6 +779,7 @@ public class Triple_axis_V1 : MonoBehaviour
                                         try
                                         {
                                             asar.SendMessage(zAxis[i], (int)sent_data[2]);
+                                            print("SENT Z");
                                         }
                                         catch (Exception e)
                                         {
@@ -1013,7 +1016,7 @@ public class Triple_axis_V1 : MonoBehaviour
             Application.Quit();
         }
 
-        //print(timeElapsed);
+        print(timeElapsed);
     }
 }
 #endif
