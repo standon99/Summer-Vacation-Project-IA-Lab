@@ -87,7 +87,7 @@ void setup() {
     digitalWrite(setIndexString, LOW);  // turns on fet to send 5v at top of index string.
     Serial.begin(2000000);
     Wire.begin();
-    delay (7000);
+    delay(7000);
     getAddresses();
     Serial.println(usbRead);
   }
@@ -172,7 +172,7 @@ void loop() {
         desiredPos[id] = val[id];
       }
     }
-    for (int i = 0; i < nDevices; i++)
+    for (int i = 0; i < (nDevices+1); i+2)
     {
       if (mode == 0)
       {
@@ -181,12 +181,12 @@ void loop() {
           sent_data = map(val[i], 0, 1023, 0, 255);
           sliderToVal(sent_data);
         }
-        else {
-          sent_data = map(random(0, 1023), 0, 1024, 0, 255);
+        
+          sent_data = map(val[i], 0, 1023, 0, 255);
           Wire.beginTransmission(addresses[i]);
           Wire.write(sent_data);
           tStat = Wire.endTransmission();
-        }
+        
       }
       //Serial.println(tStat);
       //Serial.println("SENT DATA");
