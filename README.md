@@ -15,9 +15,12 @@
  * Gesture Recognition --- Can now terminate gesture tracking by closing fist --- 4/12/2019
  * Gesture Recognition --- Tracking center of hand gesture area
  * Gain Function --- Increase precision the higher you go (min 100 and max 300 due to accuracy issues) --- DRAFTED --- 4/12/2019
+ * Haptics --- Both axis discretization and mapping of data sets implemented. Note at this stage data sets are entered directly into          Arduino script file
+ * Two hand tracking is also operational, both hands may be tracked to manipulate both faders assigned to each axis.
  
 # Arduino Code:
 * PWM pins are operating at 26 kHz
 * Modified PID-like control system in order to smooth movements of fader
 * Works with single axis only
 * Accuracy set at 1 (out of 1023 positions along the slider)
+* New faders in use, these faders are communicating with one anotehr using I2C.
