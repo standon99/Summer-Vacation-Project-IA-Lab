@@ -23,4 +23,5 @@
 * Modified PID-like control system in order to smooth movements of fader
 * Works with single axis only
 * Accuracy set at 1 (out of 1023 positions along the slider)
-* New faders in use, these faders are communicating with one anotehr using I2C.
+* New faders in use, these faders are communicating with one another using I2C.
+* Haptics are now included in the new faders code as well- operating without vibrations/jitter. If moved too fast, however, these can often crash.
