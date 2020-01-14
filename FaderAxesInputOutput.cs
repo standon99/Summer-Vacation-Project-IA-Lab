@@ -7,12 +7,12 @@ namespace ArduinoSlidesAndRotary
 {
     public class ArduinoReaderHaptics
     {
-        private SerialPort port;
-
+        public SerialPort port;
+        
         Thread readThread;
 
         int slider1;
-
+        
         public int Slider1
         {
             get
@@ -262,20 +262,22 @@ namespace ArduinoSlidesAndRotary
                 isMoving6 = value;
             }
         }
-
+        
         private bool shouldRead;
-
+        
         public void ArduinoReader(String portName, int baudRate)
         {
             port = new SerialPort(portName, baudRate);
             port.ReadTimeout = 10;
             port.WriteTimeout = 10;
-            port.NewLine = "\n";
+            //port.NewLine = "\n";
+           
         }
 
         [SecurityPermissionAttribute(SecurityAction.Demand, ControlThread = true)]
         public void Terminate()
         {
+            UnityEngine.Debug.Log("Terminate Called");
 
             shouldRead = false;
             readThread.Interrupt();
@@ -293,14 +295,18 @@ namespace ArduinoSlidesAndRotary
             try
             {
                 port.Open();
+                UnityEngine.Debug.Log("Port opened");
             }
-            catch (TimeoutException)
+            catch (Exception e)
             {
+                UnityEngine.Debug.Log("port open failed");
                 return false;
+             
+
             }
-            shouldRead = true;
-            readThread = new Thread(DoPortRead);
-            readThread.Start();
+           // shouldRead = true;
+            //readThread = new Thread(DoPortRead);
+            //readThread.Start();
             return true;
         }
 
@@ -308,11 +314,13 @@ namespace ArduinoSlidesAndRotary
         //read the values from the Arduino
         private void DoPortRead()
         {
+            //UnityEngine.Debug.Log("CALLLELED");
             while (shouldRead)
             {
                 try
                 {
                     string line = port.ReadLine();
+                    /*
                     string[] values = line.Split(new char[] { ' ' });
                     Slider1 = int.Parse(values[0]);
                     Slider2 = int.Parse(values[1]);
@@ -332,9 +340,13 @@ namespace ArduinoSlidesAndRotary
                     IsMoving4 = int.Parse(values[15]);
                     IsMoving5 = int.Parse(values[16]);
                     IsMoving6 = int.Parse(values[17]);
+                    */
+                    //UnityEngine.Debug.Log(line);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
+                    //UnityEngine.Debug.Log(e);
+                   // break;
                 }
 
             }
@@ -367,15 +379,15 @@ namespace ArduinoSlidesAndRotary
                     string message = id.ToString() + "," + value.ToString();
                     port.WriteLine(message);
                 }
-                
+
             }
             catch (Exception)
             {
             }
 
         }
-//////////////////////////////////////////////////////////////////////
-  //move slider id to dest : id slider (0 to 5) dest (0 to 1023)
+        //////////////////////////////////////////////////////////////////////
+        //move slider id to dest : id slider (0 to 5) dest (0 to 1023)
         public void moveSlider(int id, int dest)
         {
             if (id >= 0 && id < 6)
@@ -404,8 +416,8 @@ namespace ArduinoSlidesAndRotary
         //turn into haptic mode
         public void haptic()
         {
-            SendMessageHaptics(7, 0, 0, 0);
-            //SendMessage(7, 0);
+            //SendMessageHaptics(7, 0, 0, 0);
+            SendMessage(7, 0);
             //UnityEngine.Debug.Log("Message (haptic function) Sent");
         }
 
@@ -413,14 +425,14 @@ namespace ArduinoSlidesAndRotary
         public void regularStep(int nbStepX, int nbStepY, int nbStepZ)
         {
             SendMessageHaptics(8, nbStepX, nbStepY, nbStepZ);
-            UnityEngine.Debug.Log("Message (regular step function) Sent");
+           // UnityEngine.Debug.Log("Message (regular step function) Sent");
         }
 
         //followingSlider follow followedSlider by a distance of dist (followingSlider and followedSlider are id between 0 and 5)
         public void follow(int followedSlider, int followingSlider, int dist)
         {
             dist = dist % 1024;
-            int val; 
+            int val;
             if (dist < 0)
             {
                 val = followedSlider * 100 + followingSlider * 10 + 0;
@@ -431,7 +443,7 @@ namespace ArduinoSlidesAndRotary
             }
             SendMessageHaptics(9, val, dist, 0);
         }
-        
+
         public string convert(int value)
         {
             string convertValue = "";
@@ -451,31 +463,39 @@ namespace ArduinoSlidesAndRotary
             {
                 convertValue = value.ToString();
             }
-            else{
+            else {
                 convertValue = "0000";
             }
             return convertValue;
         }
+        
+        /*
+        public void cancelHaptics()
+        {
+            SendMessageHaptics(10, 0, 0, 0);
+        }
+        */
 
          public void SendMessageHaptics(int id, int value, int value2, int value3)
-        {
-            UnityEngine.Debug.Log("ID-------------------------");
-            UnityEngine.Debug.Log(id);
+         {
+            //UnityEngine.Debug.Log("ID-------------------------");
+            //UnityEngine.Debug.Log(id);
             try
             {
                 if (id >= 0 && id < 8)
                 {
                     string message = id.ToString() + "," + convert(value);
-                    UnityEngine.Debug.Log("Message <8-------------------------");
-                    UnityEngine.Debug.Log(message);
+                    //UnityEngine.Debug.Log("Message <8-------------------------");
+                    //UnityEngine.Debug.Log(message);
                     port.WriteLine(message);
                     //UnityEngine.Debug.Log("Message Sent");
                 }
                 else if (id == 8)
                 {
                     string message = id.ToString() + "," + convert(value) + "," + convert(value2) + "," + convert(value3);
-                    UnityEngine.Debug.Log("Message 8-------------------------");
-                    UnityEngine.Debug.Log(message);
+                    //UnityEngine.Debug.Log("Message 8-------------------------");
+                    //UnityEngine.Debug.Log(message);
+                    port.WriteLine(message);
                 }
 
             }
@@ -483,6 +503,26 @@ namespace ArduinoSlidesAndRotary
             {
             }
 
+         }
+
+        public string ReadSerial()
+        {
+           
+            string read_val = "";
+
+            //port.ReadTimeout = 1;
+            try
+            {
+                //UnityEngine.Debug.Log("Called");
+                //UnityEngine.Debug.Log(port.ReadLine());
+                read_val = port.ReadLine();
+            }
+            catch(Exception e)
+            {
+                //UnityEngine.Debug.Log("Serial Exception Caught!");
+                //UnityEngine.Debug.Log(e);
+            }
+            return read_val;
         }
 
     }

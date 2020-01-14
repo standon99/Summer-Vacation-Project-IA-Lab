@@ -1,6 +1,6 @@
 ﻿/**************************************************************************************
 ** Monash University - Faculty of Information Technology - Immersive Analytics Lab   **
-** Version 2.0 - December 2019                                                       **
+** Version 3.0 - January 2020                                                        **
 ***************************************************************************************
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -15,7 +15,7 @@
  * - Gesture Recognition --- Can now terminate gesture tracking by closing fist --- 4/12/2019
  * - Gesture Recognition --- Tracking center of hand gesture area
  * - Gain Function --- Increase precision the higher you go (min 100 and max 300 due to accuracy issues) --- DRAFTED but not functioning optimally (have to address issues) --- 4/12/2019 
- * - Triple axis integration --- DONE --- Faders are slow/jittery- will be fixed when new ones come in/are used
+ * - Triple axis integration --- DONE --- Faders are slow/jittery- will be fixed when new ones are used
 // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 #if true // Directive to allow file to stop compiling in Unity- for debugging purposes
@@ -26,7 +26,7 @@ using UnityEngine;
 using System;
 using Leap; // Library for interfacing with LEAP motion controller
 using System.Diagnostics; // Contains Stopwatch class
-//using System.IO.Ports;
+using System.IO.Ports;
 
 public class Triple_axis_V1 : MonoBehaviour
 {
@@ -103,6 +103,8 @@ public class Triple_axis_V1 : MonoBehaviour
     public float pinchAvg = 0;
     public float[,] pinchDistHistory = new float[2,5];
     public int[] yAxis = { 0, 1 }, xAxis = { 3, 2 }, zAxis = { 5, 4 };
+
+    public int[] sentPositions;
 
     ArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
 
@@ -210,9 +212,9 @@ public class Triple_axis_V1 : MonoBehaviour
             // Condition to check if we are using a pinch gesture. We are considered to be pinching when our fingers are close together, or by default if 4/5 of
             // the last frames had a pinch gesture in them. In order for a pinch gesture to be recognised, the hand must not be clenched into a fist. A fist is formed when
             // the index finger tip is close to the palm of the hand. 
-            if ((fingerDist <= 45 || pinchAvg >= 0.8) && middleFingerPalmDist >= 55 && indexFingerPalmDist >= 55 && ((xPass && yPass) || (zPass && xPass) || (yPass && zPass)) && littleFPDist >= 50 && littleFPDist >= 50)
+            if ((fingerDist <= 55 || pinchAvg >= 0.8) && middleFingerPalmDist >= 55 && indexFingerPalmDist >= 55 && ((xPass && yPass) || (zPass && xPass) || (yPass && zPass)) && littleFPDist >= 50 && littleFPDist >= 50)
             {
-                if (fingerDist <= 45)
+                if (fingerDist <= 55)
                 {
                     pinchHistory[i,itr % 5] = 1;
                     //pinchDistHistory[itr % 5] = fingerDist;
@@ -229,7 +231,7 @@ public class Triple_axis_V1 : MonoBehaviour
             }
 
             // Compute average of pinches
-            for (int c = 0; c < 4; c++)
+            for (int c = 0; c < 5; c++)
             {
                 pinchSum += pinchHistory[i,c];
             }
@@ -554,6 +556,28 @@ public class Triple_axis_V1 : MonoBehaviour
         return velocity;
     }
 
+    int[] serial_Read()
+    {
+        string str = asar.ReadSerial();
+        string[] numbers = str.Split(',');
+        int string_len = str.Length;
+        if (string_len > 0)
+        {
+            int nbSliders = string_len / 3;
+            //print(string_len);
+            int ind = nbSliders - 1;
+            sentPositions = new int[ind];
+            for (int u = 0; u < nbSliders - 1; u++)
+            {
+                sentPositions[u] = Int32.Parse(numbers[u]);
+                print(sentPositions[u]);
+            }
+            //print(str);
+            // asar.DoPortRead();
+        }
+        return sentPositions;
+    }
+
     void Start()
     {
         // Define new serial port, and open it for communication
@@ -569,6 +593,7 @@ public class Triple_axis_V1 : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        serial_Read();
         if (freeze == false)
         {
             if (toggleHaptics)
@@ -751,7 +776,7 @@ public class Triple_axis_V1 : MonoBehaviour
                                         try
                                         {
                                             asar.SendMessage(xAxis[i], (int)sent_data[0]);
-                                            print("SENT X");
+                                            //print("SENT X");
                                         }
                                         catch (Exception e)
                                         {
@@ -765,7 +790,7 @@ public class Triple_axis_V1 : MonoBehaviour
                                         try
                                         {
                                             asar.SendMessage(yAxis[i], (int)sent_data[1]);
-                                            print("SENT Y");
+                                            //print("SENT Y");
                                         }
                                         catch (Exception e)
                                         {
@@ -779,7 +804,7 @@ public class Triple_axis_V1 : MonoBehaviour
                                         try
                                         {
                                             asar.SendMessage(zAxis[i], (int)sent_data[2]);
-                                            print("SENT Z");
+                                           //print("SENT Z");
                                         }
                                         catch (Exception e)
                                         {
@@ -1016,7 +1041,7 @@ public class Triple_axis_V1 : MonoBehaviour
             Application.Quit();
         }
 
-        print(timeElapsed);
+        // print(timeElapsed);
     }
 }
 #endif

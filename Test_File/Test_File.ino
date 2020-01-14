@@ -1,4 +1,5 @@
 #include <Wire.h>
+// Variable Definitions
 int itr = 0;
 bool stat = false;
 int tStat;
@@ -43,6 +44,8 @@ bool isFollowing;
 const int nbAxe = 3;
 int nbStepAxe[nbAxe];
 
+bool serial_stat;
+
 // Data sets for use in mapping haptics
 float data0[nbData] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10 , 10 , 10 , 10, 10, 10 , 10, 10, 0, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; //{0, 1, 2, 3, 4, 4, 4, 0};
 float data1[nbData] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10 , 10 , 10 , 10, 10, 10 , 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; // 10 replaced 4
@@ -51,11 +54,21 @@ bool corr_loc[3][2] = {{false, false},
   {false, false},
   {false, false}
 };
+
+/* DESCRIPTION:
+  Haptics mapping function. This function maps the relevant haptic data set. The haptics are conveyed by rapidly switching the polarity of the motor
+  This is acheived by spliting the axis into segments, and trying to push the slider to teh nerest defined position. Greater vibration is conveyed by splitting the axis
+  into smaller segments.
+
+  Inputs:
+  - k  : This value represents the number of discrete steps required along the axis
+*/
 void newHapticFunc(int k)
 {
   int currPosition = analogRead(A0);
   //float data[nbData] = {0,5,10,100,100,10,5,0};
 
+  // Map different data sets depending on the value of k
   if (k == 0)
   {
     for (int y = 0; y < nbData; y++)
@@ -78,16 +91,21 @@ void newHapticFunc(int k)
     }
   }
 
+  // Define number of intervals needed
   int intervals = 1023 / (nbData - 1);
   int intervalCount = 0, Cnt = 0;
 
+  // Iterate through past all the points already passed by the slider
   Cnt = currPosition / intervals;
   intervalCount = intervals * Cnt;
+  // Find data value corresponding to current fader position
   int currData = data[Cnt];
   intervals = 1023 / (currData * 5);
   if (currData == 0) intervals = 1023 / 2;
   //intervalCount = 0
   if (intervals > 20) mov = false;
+
+  // Snap to the nearest position
   if (currPosition > (intervalCount + (intervals / 2) + 3) && !(currPosition > 1022 || currPosition < 1) && mov)
   {
     digitalWrite(9, LOW);
@@ -206,9 +224,9 @@ void setup() {
     digitalWrite(setIndexString, HIGH);  // turns on fet to send 5v at top of index string.
     Serial.begin(2000000);
     Wire.begin();
-    //Wire.setClock(4000000);
     delay(7000);
     getAddresses();
+    Wire.setClock(400000);
     Serial.println(usbRead);
   }
   else //slave mode
@@ -280,6 +298,10 @@ void loop() {
     Serial.println(addresses[k], DEC);
     }
   */
+  if (id == 8 || old_id == 8)
+  {
+    discreteAxes(nbStepAxe[2] - 1500);
+  }
   if (isMaster)
   {
     if (Serial.available() > 0) {
@@ -313,94 +335,9 @@ void loop() {
         //indice2 = 0;
         //fillHaptic();
         ///////////////////
-        if (isMaster)
-        {
-          newHapticFunc(2);
-        }
-        for (int k = 1; k < (nDevices + 1); k++)
-        {
-          if (k == 1)
-          {
-            int num = 2000 + 2;
-            byte hb = highByte(num);
-            byte lb = lowByte(num);
-            Wire.beginTransmission(addresses[nDevices]);
-            Wire.write(lb);
-            Wire.write(hb);
-            tStat = Wire.endTransmission();
-          }
-
-          else if (k == 2)
-          {
-            int num = 2000;
-            byte hb = highByte(num);
-            byte lb = lowByte(num);
-            if (nDevices > 3) {
-              Wire.beginTransmission(addresses[3]);
-            }
-            else {
-              Wire.beginTransmission(addresses[1]);
-            }
-            Wire.write(lb);
-            Wire.write(hb);
-            tStat = Wire.endTransmission();
-          }
-
-          else if (k == 3)
-          {
-            int num = 2000;
-            byte hb = highByte(num);
-            byte lb = lowByte(num);
-            if (nDevices > 3) {
-              Wire.beginTransmission(addresses[4]);
-            }
-            else {
-              Wire.beginTransmission(addresses[2]);
-            }
-            Wire.write(lb);
-            Wire.write(hb);
-            tStat = Wire.endTransmission();
-          }
-
-          else if (k == 4)
-          {
-            int num = 2000 + 1;
-            byte hb = highByte(num);
-            byte lb = lowByte(num);
-            if (nDevices > 3) {
-              Wire.beginTransmission(addresses[1]);
-            }
-            else {
-              Wire.beginTransmission(addresses[3]);
-            }
-            Wire.write(lb);
-            Wire.write(hb);
-            tStat = Wire.endTransmission();
-          }
-
-          else if (k == 5)
-          {
-            int num = 2000 + 1;
-            byte hb = highByte(num);
-            byte lb = lowByte(num);
-            if (nDevices > 3) {
-              Wire.beginTransmission(addresses[2]);
-            }
-            else {
-              Wire.beginTransmission(addresses[4]);
-            }
-            Wire.write(lb);
-            Wire.write(hb);
-            tStat = Wire.endTransmission();
-          }
-        }
       }
       else if (id == 8 || old_id == 8) {
-
-        mode = 1;
-        // indice0 = 0;
-        //indice1 = 0;
-        //indice2 = 0;
+        mode = 2;
         for (int i = 0; i < nbAxe; i++) {
           digit1 = message[2 + 5 * i] - '0';
           digit2 = message[3 + 5 * i] - '0';
@@ -409,82 +346,8 @@ void loop() {
           nbStepAxe[i] = digit1 * 1000 + digit2 * 100 + digit3 * 10 + digit4;
           nbStepAxe[i] += 1500;
           //nbStepAxe[i] = abs(nbStepAxe[i]) % 256;
-        }
-        //fillRegularStep(nbStepAxe[0], nbStepAxe[1], nbStepAxe[2]);
-        //discreteAxes(nbStepAxe[0], nbStepAxe[1], nbStepAxe[2]); // x, y, z
-        discreteAxes(nbStepAxe[2] - 1500);
-        for (int k = 1; k < (nDevices + 1); k++)
-        {
-          if (k == 1)
-          {
-            byte hb = highByte(nbStepAxe[2]);
-            byte lb = lowByte(nbStepAxe[2]);
-            Wire.beginTransmission(addresses[nDevices]);
-            Wire.write(lb);
-            Wire.write(hb);
-            tStat = Wire.endTransmission();
-          }
+          discreteAxes(nbStepAxe[2] - 1500);
 
-          else if (k == 2)
-          {
-            byte hb = highByte(nbStepAxe[0]);
-            byte lb = lowByte(nbStepAxe[0]);
-            if (nDevices > 3) {
-              Wire.beginTransmission(addresses[3]);
-            }
-            else {
-              Wire.beginTransmission(addresses[1]);
-            }
-            Wire.write(lb);
-            Wire.write(hb);
-            tStat = Wire.endTransmission();
-          }
-
-          else if (k == 3)
-          {
-            byte hb = highByte(nbStepAxe[0]);
-            byte lb = lowByte(nbStepAxe[0]);
-            if (nDevices > 3) {
-              Wire.beginTransmission(addresses[4]);
-            }
-            else {
-              Wire.beginTransmission(addresses[2]);
-            }
-            Wire.write(lb);
-            Wire.write(hb);
-            tStat = Wire.endTransmission();
-          }
-
-          else if (k == 4)
-          {
-            byte hb = highByte(nbStepAxe[1]);
-            byte lb = lowByte(nbStepAxe[1]);
-            if (nDevices > 3) {
-              Wire.beginTransmission(addresses[1]);
-            }
-            else {
-              Wire.beginTransmission(addresses[3]);
-            }
-            Wire.write(lb);
-            Wire.write(hb);
-            tStat = Wire.endTransmission();
-          }
-
-          else if (k == 5)
-          {
-            byte hb = highByte(nbStepAxe[1]);
-            byte lb = lowByte(nbStepAxe[1]);
-            if (nDevices > 3) {
-              Wire.beginTransmission(addresses[2]);
-            }
-            else {
-              Wire.beginTransmission(addresses[4]);
-            }
-            Wire.write(lb);
-            Wire.write(hb);
-            tStat = Wire.endTransmission();
-
-          }
         }
       }
       /*
@@ -510,6 +373,10 @@ void loop() {
       sliderToVal(b, desiredPos[b]);
       }
     */
+    if (id == 8 || old_id == 8)
+    {
+      discreteAxes(nbStepAxe[2] - 1500);
+    }
 
     for (int i = 0; i < (nDevices + 1); i++)
     {
@@ -609,24 +476,209 @@ void loop() {
       //Serial.println(tStat);
       //Serial.println("SENT DATA");
       //delay(500);
+    }
+    if (mode == 1)
+    {
+      if (isMaster)
+      {
+        newHapticFunc(2);
+      }
+      for (int k = 1; k < (nDevices + 1); k++)
+      {
+        if (k == 1)
+        {
+          int num = 2000 + 2;
+          byte hb = highByte(num);
+          byte lb = lowByte(num);
+          Wire.beginTransmission(addresses[nDevices]);
+          Wire.write(lb);
+          Wire.write(hb);
+          tStat = Wire.endTransmission();
+        }
+
+        else if (k == 2)
+        {
+          int num = 2000;
+          byte hb = highByte(num);
+          byte lb = lowByte(num);
+          if (nDevices > 3) {
+            Wire.beginTransmission(addresses[3]);
+          }
+          else {
+            Wire.beginTransmission(addresses[1]);
+          }
+          Wire.write(lb);
+          Wire.write(hb);
+          tStat = Wire.endTransmission();
+        }
+
+        else if (k == 3)
+        {
+          int num = 2000;
+          byte hb = highByte(num);
+          byte lb = lowByte(num);
+          if (nDevices > 3) {
+            Wire.beginTransmission(addresses[4]);
+          }
+          else {
+            Wire.beginTransmission(addresses[2]);
+          }
+          Wire.write(lb);
+          Wire.write(hb);
+          tStat = Wire.endTransmission();
+        }
+
+        else if (k == 4)
+        {
+          int num = 2000 + 1;
+          byte hb = highByte(num);
+          byte lb = lowByte(num);
+          if (nDevices > 3) {
+            Wire.beginTransmission(addresses[1]);
+          }
+          else {
+            Wire.beginTransmission(addresses[3]);
+          }
+          Wire.write(lb);
+          Wire.write(hb);
+          tStat = Wire.endTransmission();
+        }
+
+        else if (k == 5)
+        {
+          int num = 2000 + 1;
+          byte hb = highByte(num);
+          byte lb = lowByte(num);
+          if (nDevices > 3) {
+            Wire.beginTransmission(addresses[2]);
+          }
+          else {
+            Wire.beginTransmission(addresses[4]);
+          }
+          Wire.write(lb);
+          Wire.write(hb);
+          tStat = Wire.endTransmission();
+        }
+      }
+    }
+    else if (mode == 2)
+    {
+      // indice0 = 0;
+      //indice1 = 0;
+      //indice2 = 0;
+      //fillRegularStep(nbStepAxe[0], nbStepAxe[1], nbStepAxe[2]);
+      //discreteAxes(nbStepAxe[0], nbStepAxe[1], nbStepAxe[2]); // x, y, z
+
+
+      for (int k = 1; k < (nDevices + 1); k++)
+      {
+        discreteAxes(nbStepAxe[2] - 1500);
+        if (k == 1)
+        {
+          byte hb = highByte(nbStepAxe[2]);
+          byte lb = lowByte(nbStepAxe[2]);
+          Wire.beginTransmission(addresses[nDevices]);
+          Wire.write(lb);
+          Wire.write(hb);
+          tStat = Wire.endTransmission();
+        }
+
+        else if (k == 2)
+        {
+          byte hb = highByte(nbStepAxe[0]);
+          byte lb = lowByte(nbStepAxe[0]);
+          if (nDevices > 3) {
+            Wire.beginTransmission(addresses[3]);
+          }
+          else {
+            Wire.beginTransmission(addresses[1]);
+          }
+          Wire.write(lb);
+          Wire.write(hb);
+          tStat = Wire.endTransmission();
+        }
+
+        else if (k == 3)
+        {
+          byte hb = highByte(nbStepAxe[0]);
+          byte lb = lowByte(nbStepAxe[0]);
+          if (nDevices > 3) {
+            Wire.beginTransmission(addresses[4]);
+          }
+          else {
+            Wire.beginTransmission(addresses[2]);
+          }
+          Wire.write(lb);
+          Wire.write(hb);
+          tStat = Wire.endTransmission();
+        }
+
+        else if (k == 4)
+        {
+          byte hb = highByte(nbStepAxe[1]);
+          byte lb = lowByte(nbStepAxe[1]);
+          if (nDevices > 3) {
+            Wire.beginTransmission(addresses[1]);
+          }
+          else {
+            Wire.beginTransmission(addresses[3]);
+          }
+          Wire.write(lb);
+          Wire.write(hb);
+          tStat = Wire.endTransmission();
+        }
+
+        else if (k == 5)
+        {
+          byte hb = highByte(nbStepAxe[1]);
+          byte lb = lowByte(nbStepAxe[1]);
+          if (nDevices > 3) {
+            Wire.beginTransmission(addresses[2]);
+          }
+          else {
+            Wire.beginTransmission(addresses[4]);
+          }
+          Wire.write(lb);
+          Wire.write(hb);
+          tStat = Wire.endTransmission();
+        }
+      }
+    }
+
+    for (int i = 0; i < (nDevices + 1); i++)
+    {
       Wire.requestFrom(addresses[i], 1);   // request 1 byte from slave arduino (8)
       byte MasterReceive = Wire.read();    // receive a byte from the slave arduino and store in MasterReceive
       requestedPos[i] = MasterReceive;
       //Serial.println(MasterReceive);
-
-      if (itr % 150 == 0)
-      {
-        Serial.println("--------------------------------");
-        Serial.println(map(analogRead(A0), 0, 1023, 0, 255));
-        for (int v = 1; v < nDevices + 1; v++)
-        {
-          Serial.println(requestedPos[v]);
-        }
-      }
-      //delay(1000);
     }
+    requestedPos[0] = map(analogRead(A0), 0, 1023, 0, 255);
+
+    if (itr % 50 == 0)
+    {
+      for (int v = 0; v < nDevices + 1; v++)
+      {
+        if (requestedPos[v] < 100 && requestedPos[v] >= 10)
+        {
+          Serial.print("0");
+          Serial.print(requestedPos[v]);
+        }
+        else if (requestedPos[v] < 10)
+        {
+          Serial.print("00");
+          Serial.print(requestedPos[v]);
+        }
+        else
+        {
+          Serial.print(requestedPos[v]);
+        }
+        Serial.print(",");
+      }
+      Serial.println("");
+
+    }
+    itr++;
   }
-  itr++;
 }
 
 void wiggle()
