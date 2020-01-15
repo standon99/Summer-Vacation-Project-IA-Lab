@@ -34,6 +34,8 @@ int old_id = 7;
 int mode = 0;
 int yAxis[2] = { 0, 1 }, xAxis[2] = { 3, 2 }, zAxis[2] = { 5, 4 };
 int disc_val;
+volatile long encoderValue = 0;
+
 
 const float minForce = 256;
 const float maxForce = 50;
@@ -63,6 +65,52 @@ bool corr_loc[3][2] = {{false, false},
   Inputs:
   - k  : This value represents the number of discrete steps required along the axis
 */
+
+void updateEncoder() {
+  int inputB = digitalRead(12); // Don't need to test both encoder inputs because A is already high, this interrupt was called on the rising edge.
+  if (!inputB) encoderValue++;  // A leads B - B is low
+  else encoderValue--;          // B leads A - B was already high.
+  //Serial.println(encoderValue); //  Right hand connector test ok.
+}
+
+void getAddresses()
+{
+  for (address = 1; address < 127; address++ )
+  {
+    // The i2c_scanner uses the return value of
+    // the Write.endTransmisstion to see if
+    // a device did acknowledge to the address.
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+
+    if (error == 0)
+    {
+      Serial.print("I2C device found at address 0x");
+      if (address < 16)
+        Serial.print("0");
+      Serial.print(address, HEX);
+      addresses[ctr] = address;
+      ctr++;
+      Serial.println("  !");
+      nDevices++;
+    }
+    else if (error == 4)
+    {
+      Serial.print("Unknown error at address 0x");
+      if (address < 16)
+        Serial.print("0");
+      Serial.println(address, HEX);
+    }
+  }
+  if (nDevices == 0)
+    Serial.println("No I2C devices found\n");
+  else
+    Serial.println(nDevices);
+  Serial.println("done\n");
+
+  // delay(5000);           // wait 5 seconds for next scan
+}
+
 void newHapticFunc(int k)
 {
   int currPosition = analogRead(A0);
@@ -213,7 +261,7 @@ void requestEvent()
   }
 }
 
-void start_i2c() {
+void start_i2c(int usbRead) {
   Wire.begin();
   delay(7000);
   getAddresses();
@@ -231,7 +279,7 @@ void setup() {
     isMaster = true;
     digitalWrite(setIndexString, HIGH);  // turns on fet to send 5v at top of index string.
     Serial.begin(2000000);
-    start_i2c();
+    start_i2c(usbRead);
   }
   else //slave mode
   {
@@ -253,48 +301,14 @@ void setup() {
   TCCR1B = bit (WGM13) | bit (WGM12) | bit (CS10);
   ICR1 = 600; // set frequency. 1000 is 16khz 500 32khz. //////////// up to here sets nine and ten frequency to 26khz
 
-  
+
+
+  pinMode(12, INPUT_PULLUP); //  configure as input pullup instead
+  pinMode(6, INPUT_PULLUP);
+
+  attachInterrupt(7, updateEncoder, RISING);
+
 }
-
-
-void getAddresses()
-{
-  for (address = 1; address < 127; address++ )
-  {
-    // The i2c_scanner uses the return value of
-    // the Write.endTransmisstion to see if
-    // a device did acknowledge to the address.
-    Wire.beginTransmission(address);
-    error = Wire.endTransmission();
-
-    if (error == 0)
-    {
-      Serial.print("I2C device found at address 0x");
-      if (address < 16)
-        Serial.print("0");
-      Serial.print(address, HEX);
-      addresses[ctr] = address;
-      ctr++;
-      Serial.println("  !");
-      nDevices++;
-    }
-    else if (error == 4)
-    {
-      Serial.print("Unknown error at address 0x");
-      if (address < 16)
-        Serial.print("0");
-      Serial.println(address, HEX);
-    }
-  }
-  if (nDevices == 0)
-    Serial.println("No I2C devices found\n");
-  else
-    Serial.println(nDevices);
-  Serial.println("done\n");
-
-  // delay(5000);           // wait 5 seconds for next scan
-}
-
 
 void loop() {
   /*
@@ -675,8 +689,8 @@ void loop() {
         }
         Serial.print(",");
       }
+      Serial.print(encoderValue);
       Serial.println("");
-
     }
     itr++;
   }
