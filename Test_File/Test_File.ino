@@ -213,6 +213,14 @@ void requestEvent()
   }
 }
 
+void start_i2c() {
+  Wire.begin();
+  delay(7000);
+  getAddresses();
+  Wire.setClock(400000);
+  Serial.println(usbRead);
+}
+
 void setup() {
   pinMode(forward, OUTPUT);
   pinMode(reverse, OUTPUT);
@@ -223,11 +231,7 @@ void setup() {
     isMaster = true;
     digitalWrite(setIndexString, HIGH);  // turns on fet to send 5v at top of index string.
     Serial.begin(2000000);
-    Wire.begin();
-    delay(7000);
-    getAddresses();
-    Wire.setClock(400000);
-    Serial.println(usbRead);
+    start_i2c();
   }
   else //slave mode
   {
@@ -249,6 +253,7 @@ void setup() {
   TCCR1B = bit (WGM13) | bit (WGM12) | bit (CS10);
   ICR1 = 600; // set frequency. 1000 is 16khz 500 32khz. //////////// up to here sets nine and ten frequency to 26khz
 
+  
 }
 
 
@@ -298,10 +303,6 @@ void loop() {
     Serial.println(addresses[k], DEC);
     }
   */
-  if (id == 8 || old_id == 8)
-  {
-    discreteAxes(nbStepAxe[2] - 1500);
-  }
   if (isMaster)
   {
     if (Serial.available() > 0) {
