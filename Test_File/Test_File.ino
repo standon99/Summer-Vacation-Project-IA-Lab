@@ -34,7 +34,7 @@ int old_id = 7;
 int mode = 0;
 int yAxis[2] = { 0, 1 }, xAxis[2] = { 3, 2 }, zAxis[2] = { 5, 4 };
 int disc_val;
-volatile long encoderValue = 0;
+int encoderValue = 0;
 
 
 const float minForce = 256;
@@ -45,8 +45,13 @@ bool mov = true;
 bool isFollowing;
 const int nbAxe = 3;
 int nbStepAxe[nbAxe];
+int masterEncoderVals[10];
+int MasterSwitches[10];
+int switch_stat;
 
 bool serial_stat;
+int interrupt_cnt = 0;
+int times[2];
 
 // Data sets for use in mapping haptics
 float data0[nbData] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10 , 10 , 10 , 10, 10, 10 , 10, 10, 0, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; //{0, 1, 2, 3, 4, 4, 4, 0};
@@ -67,9 +72,73 @@ bool corr_loc[3][2] = {{false, false},
 */
 
 void updateEncoder() {
+  interrupt_cnt++;
+  int timeDiff;
   int inputB = digitalRead(12); // Don't need to test both encoder inputs because A is already high, this interrupt was called on the rising edge.
-  if (!inputB) encoderValue++;  // A leads B - B is low
-  else encoderValue--;          // B leads A - B was already high.
+  int state = 0, counter = 0;
+  int no = 20;
+  int stat[no + 1];
+  times[interrupt_cnt % 2] = millis();
+  if ((interrupt_cnt % 2) == 0)
+  {
+    timeDiff = millis() - times[1];
+  }
+  else
+  {
+    timeDiff = millis() - times[0];
+  }
+
+  if (timeDiff > 15) {
+    state = 1;
+  }
+  else state = 0;
+  //state = (state << 1) | digitalRead(12) | 0xe00;
+  /*
+    for (int y = 0; y < no; y++)
+    {
+    stat[y] = digitalRead(12);
+    if (y == no-1)
+    {
+      float avg = 0;
+      for (int h = 0; h < no; h++)
+      {
+        avg += stat[h];
+      }
+      avg = avg / no;
+      if (avg == 0 || avg == 1)
+      {
+        state = 1;
+      }
+      else
+      {
+        state = 0;
+      }
+    }
+    }
+  */
+
+  if (state == 1)
+  {
+    if (inputB == LOW)
+    {
+      encoderValue++;  // A leads B - B is low
+      if (encoderValue > 24)
+      {
+        encoderValue = 0;
+      }
+    }
+    else
+    {
+      encoderValue--;          // B leads A - B was already high.
+      if (encoderValue <= -1)
+      {
+        encoderValue = 24;
+      }
+    }
+    state = 0;
+  }
+
+  //encoderValue = 70;
   //Serial.println(encoderValue); //  Right hand connector test ok.
 }
 
@@ -154,12 +223,12 @@ void newHapticFunc(int k)
   if (intervals > 20) mov = false;
 
   // Snap to the nearest position
-  if (currPosition > (intervalCount + (intervals / 2) + 3) && !(currPosition > 1022 || currPosition < 1) && mov)
+  if (currPosition > (intervalCount + (intervals / 2) + 4) && !(currPosition > 1022 || currPosition < 1) && mov)
   {
     digitalWrite(9, LOW);
     digitalWrite(10, HIGH);
   }
-  else if (currPosition < (intervalCount + (intervals / 2) - 3) && !(currPosition > 1022 || currPosition < 1) && mov)
+  else if (currPosition < (intervalCount + (intervals / 2) - 4) && !(currPosition > 1022 || currPosition < 1) && mov)
   {
     digitalWrite(9, HIGH);
     digitalWrite(10, LOW);
@@ -253,12 +322,29 @@ void receiveEvent(int howMany)
 
 void requestEvent()
 {
-  if (!isMaster)
+  if (!isMaster && (itr % 3 == 0))
   {
     int pos = analogRead(A0);
     message_i2c = map(pos, 0, 1023, 0, 255);
     Wire.write(message_i2c);
+    // Must send encoder value as well
+    //Wire.endTransmission();
   }
+  else if ((itr % 3) == 1)
+  {
+    /*
+    if (encoderValue > 24)
+    {
+      encoderValue = 24;
+    }
+    */
+    Wire.write(encoderValue);
+  }
+  else
+  {
+    Wire.write(switch_stat);
+  }
+  itr++;
 }
 
 void start_i2c(int usbRead) {
@@ -305,8 +391,8 @@ void setup() {
 
   pinMode(12, INPUT_PULLUP); //  configure as input pullup instead
   pinMode(6, INPUT_PULLUP);
-
-  attachInterrupt(7, updateEncoder, RISING);
+  pinMode(7, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(7), updateEncoder, FALLING);
 
 }
 
@@ -317,6 +403,15 @@ void loop() {
     Serial.println(addresses[k], DEC);
     }
   */
+
+  // Rotary Encoder Switch
+  if (digitalRead(6)) {
+    switch_stat = 0;
+  }
+  else {
+    switch_stat = 1;
+  }
+
   if (isMaster)
   {
     if (Serial.available() > 0) {
@@ -660,17 +755,26 @@ void loop() {
       }
     }
 
-    for (int i = 0; i < (nDevices + 1); i++)
+    if (itr % 300 == 0) // Send infrequently as data otherwise queues up at unity end creating lag
     {
-      Wire.requestFrom(addresses[i], 1);   // request 1 byte from slave arduino (8)
-      byte MasterReceive = Wire.read();    // receive a byte from the slave arduino and store in MasterReceive
-      requestedPos[i] = MasterReceive;
-      //Serial.println(MasterReceive);
-    }
-    requestedPos[0] = map(analogRead(A0), 0, 1023, 0, 255);
 
-    if (itr % 50 == 0)
-    {
+      for (int i = 0; i < (nDevices + 1); i++)
+      {
+        Wire.requestFrom(addresses[i], 1);   // request 1 byte from slave arduino (8)
+        byte MasterRPos = Wire.read();    // receive a byte from the slave arduino and store in MasterReceive
+        requestedPos[i] = MasterRPos;
+        Wire.requestFrom(addresses[i], 1);
+        byte masterencoderval = Wire.read();
+        masterEncoderVals[i] = masterencoderval;
+        Wire.requestFrom(addresses[i], 1);
+        byte MasterSwitchStat = Wire.read();
+        MasterSwitches[i] = MasterSwitchStat;
+        //Serial.println(MasterReceive);
+      }
+
+      requestedPos[0] = map(analogRead(A0), 0, 1023, 0, 255);
+
+
       for (int v = 0; v < nDevices + 1; v++)
       {
         if (requestedPos[v] < 100 && requestedPos[v] >= 10)
@@ -688,8 +792,14 @@ void loop() {
           Serial.print(requestedPos[v]);
         }
         Serial.print(",");
+        Serial.print(masterEncoderVals[v]);
+        Serial.print(",");
+        Serial.print(MasterSwitches[v]);
+        if (v != nDevices)
+        {
+          Serial.print(",");
+        }
       }
-      Serial.print(encoderValue);
       Serial.println("");
     }
     itr++;
