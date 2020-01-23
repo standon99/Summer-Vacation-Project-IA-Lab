@@ -27,14 +27,16 @@ using UnityEngine;
 using System;
 using Leap; // Library for interfacing with LEAP motion controller
 using System.Diagnostics; // Contains Stopwatch class
+using System.Threading;
+using System.Reflection;
 using System.IO.Ports;
 
 public class Triple_axis_V1 : MonoBehaviour
 {
     // Add controller object to the program
     Controller controller;
-
-    private GameObject cube1;///////////// creating sample cube game object
+    [SerializeField] VirtualFaderAxis _virtualFaderAxisTwo;
+    //private GameObject cube1;///////////// creating sample cube game object
 
     private bool full_vol = false, hands_out_of_view = false;
     private bool interaction_box = true;
@@ -98,7 +100,7 @@ public class Triple_axis_V1 : MonoBehaviour
     public Stopwatch stopwatch = new Stopwatch();
 
     // Arduino COM Port for Serial Communication
-    public string COM = "COM14";
+    public string COM = "COM16";
 
     // Variable to store gesture type
     public string gesture;
@@ -113,6 +115,7 @@ public class Triple_axis_V1 : MonoBehaviour
     public int[] sentButtonVals;
     public int setter = 1;
 
+    public int x0 = 0;
     ArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
 
     /* Function to identify hand gestures
@@ -344,28 +347,32 @@ public class Triple_axis_V1 : MonoBehaviour
 
             for (int i = 0; i < 3; i++)
             {
+                // Min value in interaction box
                 if (vals[i] > xyz_max[i])
                 {
                     vals[i] = xyz_max[i];
                 }
 
-                // Max value in interaction box
+                // Min value in interaction box
                 if (vals[i] < xyz_min[i])
                 {
                     vals[i] = xyz_min[i];
                 }
 
+                // Check if interaction zone is symmetrical about the origin (position 0)
                 if ((xyz_max[i] + xyz_min[i]) == 0)
                 {
+                    // if below origin (-)
                     if (vals[i] < 0)
                     {
-                        normalized_val[i] = (1023 / ((-xyz_min[i]) * 2)) * (xyz_max[i] + vals[i]);
+                        normalized_val[i] = (1024 / ((xyz_max[i]) * 2)) * (xyz_max[i] + vals[i] + 1);
                         print(normalized_val);
                     }
 
+                    // if above origin (+)
                     if (vals[i] >= 0)
                     {
-                        normalized_val[i] = (1023 / ((-xyz_min[i]) * 2) + 1) * vals[i] + (float)480;
+                        normalized_val[i] = (1024 / ((xyz_max[i]) * 2)) * vals[i] + (float)(1023/2);
                         print(normalized_val);
                     }
 
@@ -415,7 +422,7 @@ public class Triple_axis_V1 : MonoBehaviour
      * Outputs:
      *   - results: An array containing the filtered value at the 0 index, and the covariance value at index 1.
      *   
-     *  Function:
+     * Function:
      *  Apply Kalman filteration technique to data values.
      *  
      * Key Assumptions:
@@ -443,7 +450,6 @@ public class Triple_axis_V1 : MonoBehaviour
         float velocityAvg = 0;
         float velocitySum = 0;
         int arrayMax = 5;
-
 
         // ------------------------------------------------------------------------------Predict Stage-------------------------------------------------------------------------------------
         // Find predicted value of covariance
@@ -582,7 +588,12 @@ public class Triple_axis_V1 : MonoBehaviour
         obj.transform.rotation = Quaternion.Euler(new Vector3(x,y,z));
     }
 
-    int[] serial_Read()
+    public static object GetPropValue(object src, string propName)
+    {
+        return src.GetType().GetProperty(propName).GetValue(src, null);
+    }
+
+    public void serial_Read()
     {
         string str = asar.ReadSerial();
         string[] numbers = str.Split(',');
@@ -677,21 +688,61 @@ public class Triple_axis_V1 : MonoBehaviour
         }
 
         ///// Rotating sample cube
-        float rot_val = (360/24)/2 * sentRotaryVals[1];
-        ObjectRotation(cube1, rot_val, 0, 0);
-        return sentPositions;
+        //float rot_val = (360/24)/2 * sentRotaryVals[1];
+        string[] slider_ids = new string[6]{ "Z_AXIS_MIN", "Z_AXIS_MAX", "X_AXIS_MIN", "X_AXIS_MAX", "Y_AXIS_MIN", "Y_AXIS_MAX" };
+        /*
+        for (int m = 0; m < sentPositions.Length; m++)
+        {
+            if (x0 != sentPositions[m])
+            {
+                x0 = sentPositions[m];
+                float v = (float)(4.027559 * x0) / 1023.0f;
+
+                // TAKE VALUES WITH REFERENCE TO MIDDLE OF THE SENT POSITIONS ARRAY (sentPositions.Length/2)
+                if (m == 0)
+                {
+                    _virtualFaderAxisTwo.SetSliderFromPhysical(VirtualFaderAxis.AxisSliders.Z_AXIS_MIN, v);
+                }
+                else if (m == sentPositions.Length - 2)
+                {
+                    _virtualFaderAxisTwo.SetSliderFromPhysical(VirtualFaderAxis.AxisSliders.Z_AXIS_MAX, v);
+                }
+                else if (m == sentPositions.Length - 4)
+                {
+                    _virtualFaderAxisTwo.SetSliderFromPhysical(VirtualFaderAxis.AxisSliders.X_AXIS_MIN, v);
+                }
+                else if (m == sentPositions.Length - 5)
+                {
+                    _virtualFaderAxisTwo.SetSliderFromPhysical(VirtualFaderAxis.AxisSliders.X_AXIS_MAX, v);
+                }
+                else if (m == sentPositions.Length-3)
+                {
+                    _virtualFaderAxisTwo.SetSliderFromPhysical(VirtualFaderAxis.AxisSliders.Y_AXIS_MIN, v);
+                }
+                else if (m == sentPositions.Length- 1)
+                {
+                    _virtualFaderAxisTwo.SetSliderFromPhysical(VirtualFaderAxis.AxisSliders.Y_AXIS_MAX, v);
+                }
+                
+            }
+        }
+        */
+
+        //ObjectRotation(cube1, rot_val, 0, 0);
+        //return sentPositions;
+        Thread.Sleep(0);
     }
 
     void Start()
-    {
+    { 
         // Define new serial port, and open it for communication
         asar = new ArduinoSlidesAndRotary.ArduinoReaderHaptics();
         asar.ArduinoReader(COM, 2000000);
         asar.BeginRead();
         //haptics = new ArduinoSlidesAndRotary.HapticsClass.haptic();
         //haptics = new ArduinoSlidesAndRotary.ArduinoReader(COM, 2000000);
-
-
+        
+        /* CUBE FOR ENCODER DEMO
         // Initialize Cube
         cube1 = GameObject.CreatePrimitive(PrimitiveType.Cube);
         cube1.transform.position = new Vector3(0.0f, 0.0f, 0.0f);
@@ -699,15 +750,17 @@ public class Triple_axis_V1 : MonoBehaviour
         //cube1.transform.(3, 3, 3);
         cube1.GetComponent<Renderer>().material.color = Color.blue;
         cube1.name = "obj";
-
+        */
     }
-
-
 
     // Update is called once per frame
     void Update()
     {
-        serial_Read();
+        // Create a seprate thread to run Serial reader on (prevents lag)
+        Thread serial_reader_t = new Thread(new ThreadStart(serial_Read));
+        serial_reader_t.Start();
+        //serial_reader_t.Join();
+        
         if (freeze == false)
         {
             if (toggleHaptics)
