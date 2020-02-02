@@ -1,11 +1,16 @@
 #include <Wire.h>
+#include <avr/pgmspace.h>
+
+// A permanently stored address
+const int PERM_ADDRESS PROGMEM = 7;
+
 // Variable Definitions
 int itr = 0;
 bool stat = false;
 int tStat;
 byte message_i2c;
 byte sent_data;
-int forward = 9 ;
+int forward = 9;
 int reverse = 10;
 int setIndexString = 5;
 int indexPin = A1;
@@ -35,6 +40,7 @@ int mode = 0;
 int yAxis[2] = { 0, 1 }, xAxis[2] = { 3, 2 }, zAxis[2] = { 5, 4 };
 int disc_val;
 int encoderValue = 0;
+int timeNow;
 
 
 const float minForce = 256;
@@ -70,6 +76,23 @@ bool corr_loc[3][2] = {{false, false},
   Inputs:
   - k  : This value represents the number of discrete steps required along the axis
 */
+
+/*
+  checks the I2C bus
+  this function checks the SCL and SDA lines; if e.g. a device on the bus is not powered, some wire functions will cause the Arduino to hang
+  returns true if bus OK, else false
+*/
+bool checkBus()
+{
+  // if both lines are low, assume the device has no power
+  if (digitalRead(SCL) == LOW || digitalRead(SDA) == LOW)
+  {
+    Serial.println("Bus error");
+    return false;
+  }
+
+  return true;
+}
 
 void updateEncoder() {
   interrupt_cnt++;
@@ -144,6 +167,8 @@ void updateEncoder() {
 
 void getAddresses()
 {
+  ctr = 1;
+  nDevices = 0;
   for (address = 1; address < 127; address++ )
   {
     // The i2c_scanner uses the return value of
@@ -222,7 +247,7 @@ void newHapticFunc(int k)
   //intervalCount = 0
   if (intervals > 20) mov = false;
 
-  // Snap to the nearest position
+  // Snap to the nearest position-
   if (currPosition > (intervalCount + (intervals / 2) + 4) && !(currPosition > 1022 || currPosition < 1) && mov)
   {
     digitalWrite(9, LOW);
@@ -333,10 +358,10 @@ void requestEvent()
   else if ((itr % 3) == 1)
   {
     /*
-    if (encoderValue > 24)
-    {
+      if (encoderValue > 24)
+      {
       encoderValue = 24;
-    }
+      }
     */
     Wire.write(encoderValue);
   }
@@ -374,7 +399,7 @@ void setup() {
     delay(500); // index string fet off.
     indexRead = analogRead(indexPin);
     i2cAddress  = map(indexRead, 0, 1023, 1, 127);
-    Wire.begin(i2cAddress);  // I2c begin as slave.
+    Wire.begin(PERM_ADDRESS);  // I2c begin as slave.
     Wire.onReceive(receiveEvent);
     Wire.onRequest(requestEvent);
   }
@@ -397,12 +422,13 @@ void setup() {
 }
 
 void loop() {
-  /*
-    for (int k = 0; k < (nDevices + 1); k++)
-    {
-    Serial.println(addresses[k], DEC);
-    }
-  */
+
+
+  //for (int k = 0; k < (nDevices + 1); k++)
+  // {
+  //Serial.println(addresses[k], DEC);
+  // }
+
 
   // Rotary Encoder Switch
   if (digitalRead(6)) {
@@ -414,6 +440,19 @@ void loop() {
 
   if (isMaster)
   {
+    ////////////////////////////////
+    /*
+      if (itr == 0)
+      {
+      timeNow = millis();
+      }
+
+      if (timeNow - millis()  > 1000)
+      {
+      getAddresses();
+      timeNow = millis();
+      }
+    */
     if (Serial.available() > 0) {
       message = Serial.readStringUntil('\n');
       old_id = id;
@@ -757,7 +796,7 @@ void loop() {
 
     if (itr % 300 == 0) // Send infrequently as data otherwise queues up at unity end creating lag
     {
-
+      int u = 0;
       for (int i = 0; i < (nDevices + 1); i++)
       {
         Wire.requestFrom(addresses[i], 1);   // request 1 byte from slave arduino (8)
@@ -765,11 +804,22 @@ void loop() {
         requestedPos[i] = MasterRPos;
         Wire.requestFrom(addresses[i], 1);
         byte masterencoderval = Wire.read();
-        masterEncoderVals[i] = masterencoderval;
         Wire.requestFrom(addresses[i], 1);
         byte MasterSwitchStat = Wire.read();
-        MasterSwitches[i] = MasterSwitchStat;
+        if (addresses[i] % 2 == 0 && i != 0)
+        {
+          masterEncoderVals[u] = masterencoderval;
+          MasterSwitches[u] = MasterSwitchStat;
+          u++;
+        }
         //Serial.println(MasterReceive);
+        //if (addresses[i] % 2 == 0 && i != 0)
+        //{
+        // Serial.println("----");
+        //  Serial.println(masterencoderval);
+        // Serial.println(MasterSwitchStat);
+        //  Serial.println("----");
+        //}
       }
 
       requestedPos[0] = map(analogRead(A0), 0, 1023, 0, 255);
@@ -792,10 +842,13 @@ void loop() {
           Serial.print(requestedPos[v]);
         }
         Serial.print(",");
+      }
+      for (int v = 0; v < (nDevices + 1) / 2; v++)
+      {
         Serial.print(masterEncoderVals[v]);
         Serial.print(",");
         Serial.print(MasterSwitches[v]);
-        if (v != nDevices)
+        if (v != nDevices/2)
         {
           Serial.print(",");
         }
