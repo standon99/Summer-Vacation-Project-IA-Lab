@@ -17,6 +17,7 @@ public class relativeAxisPositionv2 : MonoBehaviour
     public Vector3 distance;
     public Vector3 modelRot;
     public Vector3 modelMoverPos;
+    public Vector3 camRot;
 
     public bool noModelMover = true;
 
@@ -40,6 +41,7 @@ public class relativeAxisPositionv2 : MonoBehaviour
         camPos = metaCamera.transform.position;
         print(camPos);
         modelMoverPos = modelMover.transform.position;
+        camRot = metaCamera.transform.eulerAngles;
         /*
 
         distance.x = -(headsetPos.y - axisPos.y);
@@ -56,7 +58,6 @@ public class relativeAxisPositionv2 : MonoBehaviour
         {
             modelMoverPos = new Vector3(0, 0, 0);
         }
-
         // WOrks:
         //model.transform.position = new Vector3(modelMoverPos.x + camPos.x + distance.x, -(modelMoverPos.y + camPos.z + distance.z), -(modelMoverPos.z + camPos.y + distance.y));
 
@@ -71,8 +72,30 @@ public class relativeAxisPositionv2 : MonoBehaviour
 
         //modelRot = new Vector3(axis.transform.eulerAngles.y, axis.transform.eulerAngles.z, axis.transform.eulerAngles.x);
 
-        modelRot = new Vector3(-axis.transform.eulerAngles.y, axis.transform.eulerAngles.z, -axis.transform.eulerAngles.x);
-        model.transform.localEulerAngles = modelRot;
+        //modelRot = new Vector3(-axis.transform.eulerAngles.y, axis.transform.eulerAngles.z, -axis.transform.eulerAngles.x);
+        print("////");
+        print(camRot.y);
+        if (camRot.y >= 315 | camRot.y <=45)
+        {
+            modelRot = new Vector3(axis.transform.eulerAngles.y, axis.transform.eulerAngles.z, axis.transform.eulerAngles.x);
+            print("HERE");
+        }
+        else if (camRot.y >= 45 && camRot.y <= 135)
+        {
+            modelRot = new Vector3(-axis.transform.eulerAngles.x, axis.transform.eulerAngles.z, axis.transform.eulerAngles.y);
+        }
+        else if (camRot.y <= 315 && camRot.y >= 270)
+        {
+            modelRot = new Vector3(axis.transform.eulerAngles.x, axis.transform.eulerAngles.z, -axis.transform.eulerAngles.y);
+        }
+        else
+        {
+            // Correct
+            modelRot = new Vector3(-axis.transform.eulerAngles.y, axis.transform.eulerAngles.z, -axis.transform.eulerAngles.x);
+
+        }
+
+        model.transform.eulerAngles = modelRot;
     }
 
 }
