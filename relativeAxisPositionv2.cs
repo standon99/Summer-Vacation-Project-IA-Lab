@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 //using System.Math;
 
-public class relativeAxisPosition : MonoBehaviour
+public class relativeAxisPositionv2 : MonoBehaviour
 {
     GameObject headset;
     GameObject axis;
@@ -18,7 +18,7 @@ public class relativeAxisPosition : MonoBehaviour
     public Vector3 modelRot;
     public Vector3 modelMoverPos;
 
-    public bool noModelMover = true; 
+    public bool noModelMover = true;
 
     // Start is called before the first frame update
     void Start()
@@ -71,9 +71,8 @@ public class relativeAxisPosition : MonoBehaviour
 
         //modelRot = new Vector3(axis.transform.eulerAngles.y, axis.transform.eulerAngles.z, axis.transform.eulerAngles.x);
 
-        //modelRot = new Vector3(-axis.transform.eulerAngles.y, axis.transform.eulerAngles.z, -axis.transform.eulerAngles.x);
-        modelRot = new Vector3(axis.transform.eulerAngles.y, axis.transform.eulerAngles.z, axis.transform.eulerAngles.x);
-        model.transform.eulerAngles = modelRot;
+        modelRot = new Vector3(-axis.transform.eulerAngles.y, axis.transform.eulerAngles.z, -axis.transform.eulerAngles.x);
+        model.transform.localEulerAngles = modelRot;
     }
 
 }
