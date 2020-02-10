@@ -10,6 +10,7 @@ public class relativeAxisPositionv2 : MonoBehaviour
     GameObject metaCamera;
     GameObject model;
     GameObject modelMover;
+    //GameObject secondAxis;
 
     public Vector3 headsetPos;
     public Vector3 axisPos;
@@ -29,6 +30,7 @@ public class relativeAxisPositionv2 : MonoBehaviour
         metaCamera = GameObject.Find("MetaCameraRig");
         model = GameObject.Find("Model");
         modelMover = GameObject.Find("MetaCube"); // It is actually a Sphere
+        //secondAxis = GameObject.Find("Axis2");
     }
 
     // Update is called once per frame
@@ -84,7 +86,7 @@ public class relativeAxisPositionv2 : MonoBehaviour
         {
             modelRot = new Vector3(-axis.transform.eulerAngles.x, axis.transform.eulerAngles.z, axis.transform.eulerAngles.y);
         }
-        else if (camRot.y <= 315 && camRot.y >= 270)
+        else if (camRot.y <= 315 && camRot.y >= 225)
         {
             modelRot = new Vector3(axis.transform.eulerAngles.x, axis.transform.eulerAngles.z, -axis.transform.eulerAngles.y);
         }
