@@ -286,8 +286,6 @@ namespace ArduinoSlidesAndRotary
             port.Close();
 
             Console.WriteLine("CODEMAX: Thread is alive" + readThread.IsAlive);
-
-
         }
 
         public bool BeginRead()
@@ -295,14 +293,12 @@ namespace ArduinoSlidesAndRotary
             try
             {
                 port.Open();
-                UnityEngine.Debug.Log("Port opened");
+                UnityEngine.Debug.Log("Port Opened");
             }
             catch (Exception e)
             {
-                UnityEngine.Debug.Log("port open failed");
+                UnityEngine.Debug.Log("Port Open Failed");
                 return false;
-             
-
             }
            // shouldRead = true;
             //readThread = new Thread(DoPortRead);
