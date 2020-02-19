@@ -8,12 +8,13 @@ namespace WirelessArduinoSlidesAndRotary
     public class ArduinoReaderHaptics
     {
         public SerialPort port;
+        public SerialPort[] portsArray = new SerialPort[100];
 
         Thread readThread;
 
         int slider1;
-        public SerialPort[] testArray = new SerialPort[100];
-
+        public SerialPort[] testArray = new SerialPort[1000];
+        private int cnt = 0;
         public int Slider1
         {
             get
@@ -267,35 +268,60 @@ namespace WirelessArduinoSlidesAndRotary
         private bool shouldRead;
         bool[] success = new bool[100];
         // A new scanning function to detect all open COM ports
+
+
         public string[] findCOMPorts(int baudRate)
         {
-            string[] comPorts = new string[100];
+            
+            string[] comPorts = new string[5];
+            
             //SerialPort [] testArray = new SerialPort[100];
             int index = 0;
-            for (int y = 0; y < 100; y++)
+            int comPortsCntr = 0;
+            for (int y = 21; index < comPorts.Length; y=y+3)
             {
                 string portname = ("COM" + y.ToString());
                 //UnityEngine.Debug.Log(portname);
-                testArray[y] = new SerialPort(portname, baudRate);
+                SerialPort testPort = new SerialPort(portname, baudRate);
                 {
                     try
                     {
-                        testArray[y].Open();
+                        testPort.Open();
                         UnityEngine.Debug.Log("Port Opened" + y.ToString());
                         comPorts[index] = portname;
-                        success[y] = true;
-                        y = y + 2;// might need to modify the + 2
+                        //success[y] = true;
+                        comPortsCntr++;
                         index++;
-                        testArray[y].Close();
+                        testPort.Close();
+                       // might need to modify the + 2
                     }
                     catch (Exception e)
                     {
                         comPorts[index] = "NULL";
-                        
+                        index++;
                         //UnityEngine.Debug.Log("Port Open Failed (Function)" + y.ToString());
+                    }
+
+                    int newCtr = 0;
+
+                    for (int t = 0; t < (comPortsCntr - 1); t++)
+                    {
+                        string[] comPortsCopy = comPorts;
+                        if (comPortsCopy[t] != "NULL")
+                        {
+                            comPorts[newCtr] = comPortsCopy[t];
+                            newCtr++;
+                        }
                     }
                 }
             }
+            UnityEngine.Debug.Log("Array of COM ports");
+            UnityEngine.Debug.Log(comPorts);
+            /////////NEED TO INCLUDE THE PORT TIMEOUTS!!!!
+            //comPorts = new string[2];
+            //comPorts[0] = "COM21";
+           // comPorts[1] = "COM24";
+            //comPorts[2] = "COM27";
             return comPorts;
         }
         public void ArduinoReader(String portName, int baudRate)
@@ -304,7 +330,6 @@ namespace WirelessArduinoSlidesAndRotary
             port.ReadTimeout = 1;
             port.WriteTimeout = 1;
             //port.NewLine = "\n";
-
         }
 
         [SecurityPermissionAttribute(SecurityAction.Demand, ControlThread = true)]
@@ -382,59 +407,80 @@ namespace WirelessArduinoSlidesAndRotary
         }
 
         //sends value to the Arduino - checked is good
+        public void MoveSlider(string name, int pos1, int pos2, int baudRate, int hapticstat, int xSteps, int ySteps, int zSteps)
+        {
+            SendMessage(name, pos1, pos2, baudRate, hapticstat, xSteps, ySteps, zSteps);
+        }
 
         public void SendMessage(string COMAddress, int value1, int value2, int baudRate, int hapticsStat, int xStep, int yStep, int zStep)
         {
-            if (hapticsStat == 0)
+            /*
+            string[] portNo = COMAddress.Split('M');
+            int intPortNo = Int32.Parse(portNo[1]);
+            if (portsArray[intPortNo] == null)
+            {
+                portsArray[intPortNo] = new SerialPort(COMAddress, baudRate);
+                portsArray[intPortNo].Open();
+            }
+            port = portsArray[intPortNo];
+            */
+            if (true)
             {
                 string value1String = value1.ToString();
                 string value2String = value2.ToString();
-
+      
                 // Print value 1
                 if (value1 >= 0 && value1 <= 9)
                 {
-                    value1String = ",000" + value1String;
+                    value1String = "000" + value1String;
                 }
                 else if (value1 >= 10 && value1 <= 99)
                 {
-                    value1String = ",00" + value1String;
+                    value1String = "00" + value1String;
                 }
                 else if (value1 >= 100 && value1 <= 999)
                 {
-                    value1String = ",0" + value1String;
+                    value1String = "0" + value1String;
                 }
                 else if (value1 >= 1000 && value1 <= 1023)
                 {
-                    value1String = "," + value1String;
+                    value1String = "" + value1String;
                 }
                 // Print value 2 
                 if (value2 >= 0 && value2 <= 9)
                 {
-                    value2String = ",000" + value2String;
+                    value2String = "000" + value2String;
                 }
                 else if (value2 >= 10 && value2 <= 99)
                 {
-                    value2String = ",00" + value2String;
+                    value2String = "00" + value2String;
                 }
                 else if (value2 >= 100 && value2 <= 999)
                 {
-                    value2String = ",0" + value2String;
+                    value2String = "0" + value2String;
                 }
                 else if (value2 >= 1000 && value2 <= 1023)
                 {
-                    value2String = "," + value2String;
+                    value2String = "" + value2String;
                 }
-                // Sent message gives first pos value, second pos value and wheteher haptics need to be engaged
-                string message = value1String + "," + value2String + "," + hapticsStat.ToString() + "," + xStep.ToString() + "," + yStep.ToString() + "," + zStep.ToString();
+                // Sent message gives first pos value, second pos value and whether haptics need to be engaged
+                string message = value1String + value2String + hapticsStat.ToString() + xStep.ToString()  + yStep.ToString() + zStep.ToString();
+                //UnityEngine.Debug.Log(message);
                 try
                 {
                     port = new SerialPort(COMAddress, baudRate);
+                    //port = new SerialPort("COM21", baudRate);
+                    port.ReadTimeout = 1;
+                    port.WriteTimeout = 1;
                     port.Open();
                     port.WriteLine(message);
                     port.Close();
+                    UnityEngine.Debug.Log("A MESSAGE WAS SENT!!!!!!!!!!");
+                    //UnityEngine.Debug.Log(cnt+1);
                 }
                 catch (Exception)
                 {
+                    UnityEngine.Debug.Log(COMAddress);
                     UnityEngine.Debug.Log("A message failed to send (send message ERROR 1)");
                 }
             }
@@ -457,7 +503,7 @@ namespace WirelessArduinoSlidesAndRotary
         {
             SendMessageHaptics(6, 0, 0, 0);
         }
-
+        /*
         //reset to initial position
         public void reset()
         {
@@ -468,7 +514,7 @@ namespace WirelessArduinoSlidesAndRotary
             SendMessageHaptics(4, 0, 0, 0);
             SendMessageHaptics(5, 1023, 0, 0);
         }
-
+        */
         //turn into haptic mode- here a data set is mapped by the Arduinos
         public void haptic(string comAddress, int baudRate)
         {
@@ -482,7 +528,7 @@ namespace WirelessArduinoSlidesAndRotary
         {
             //SendMessageHaptics(8, nbStepX, nbStepY, nbStepZ);
             // UnityEngine.Debug.Log("Message (regular step function) Sent");
-            SendMessage(comAddress, baudRate, 0, 0, 2, nbStepX, nbStepY, nbStepZ);
+            SendMessage(comAddress, 0, 0, baudRate, 2, nbStepX, nbStepY, nbStepZ);
         }
 
         public string convert(int value)

@@ -239,11 +239,11 @@ public class Wireless_axes : MonoBehaviour
 
         for (int h = 0; h < comPortAdd.Length; h++)
         {
-            port = new SerialPort(comPortAdd[h], baudRate);
             try
             {
+                port = new SerialPort(comPortAdd[h], baudRate);
                 port.Open();
-                string message = h;
+                string message = h.ToString();
                 port.WriteLine(message);
                 port.Close();
             }
@@ -274,6 +274,10 @@ public class Wireless_axes : MonoBehaviour
 
         private int sentRotaryValsHist;
 
+        Wireless_axes wa = new Wireless_axes();
+      
+        public WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics asar = new WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics();
+
         // Method to create a new axis instance
         public Axis(string name, int Pos1, int Pos2, int Encoder, int dataSetId)
         {
@@ -287,40 +291,43 @@ public class Wireless_axes : MonoBehaviour
         // Method to send data to set the required positions on the axes
         public void setAxis(string name)//, int Pos1, int Pos2)
         {
-            WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
-            asar = new WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics();
-            Wireless_axes wa = new Wireless_axes();
-            string[] portNo = name.Split('M');
-            int intPortNo = Int32.Parse(portNo[1]);
-            int baudRate = 2000000;
-            asar.SendMessage(name, pos1, pos2, baudRate, 0, wa.xSteps, wa.ySteps, wa.zSteps);
+           
+            //WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
+            // asar = new WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics();
+            //Wireless_axes wa = new Wireless_axes();
+            // string[] portNo = name.Split('M');
+            // int intPortNo = Int32.Parse(portNo[1]);
+            
+            //asar.SendMessage(name, pos1, pos2, baudRate, 0, wa.xSteps, wa.ySteps, wa.zSteps);
+            asar.MoveSlider(name, pos1, pos2, wa.baudRate, 0, wa.xSteps, wa.ySteps, wa.zSteps);
+
         }
 
         public void toggleHapticsDataset(string name)
         {
-            WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
-            asar = new WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics();
-            Wireless_axes wa = new Wireless_axes();
+           // WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
+            //asar = new WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics();
+            //Wireless_axes wa = new Wireless_axes();
             asar.haptic(name, wa.baudRate);
         }
 
         public void discreteAxes(string name)
         {
-            WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
-            asar = new WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics();
-            Wireless_axes wa = new Wireless_axes();
+            //WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
+          // asar = new WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics();
+         //  Wireless_axes wa = new Wireless_axes();
             asar.regularStep(name, wa.baudRate, wa.xSteps, wa.ySteps, wa.zSteps);
         }
         
         // 
         public void readAxis()
         {
-            WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
-            asar = new WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics();
+            //WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
+            //asar = new WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics();
             string str = asar.ReadSerial();
             string[] numbers = str.Split(',');
             int string_len = numbers.Length;
-            Wireless_axes wa = new Wireless_axes();
+            //Wireless_axes wa = new Wireless_axes();
             wa.axesObjArray[Int32.Parse(numbers[0])].readPos1 = Int32.Parse(numbers[1]);
             wa.axesObjArray[Int32.Parse(numbers[0])].readPos2 = Int32.Parse(numbers[2]);
             int encoderInitialVal = Int32.Parse(numbers[3]);
@@ -377,7 +384,7 @@ public class Wireless_axes : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (itr % 50 == 0)
+        if (itr % 1000 == 0 & false)
         {
             comPortAddOld = comPortAdd;
             comPortAdd = asar.findCOMPorts(baudRate);
@@ -396,13 +403,17 @@ public class Wireless_axes : MonoBehaviour
         }
         if (!toggleHaptics)
         {
+            //print("COM Port ADD LENGTH");
+            //print(comPortAdd.Length);
             for (int u = 0; u < comPortAdd.Length; u++)
             {
                 int leftPos = 500; // Add process that will define what leftPos signifies
                 axesObjArray[u].pos1 = leftPos;
                 int rightPos = 500; // Add process that will define what rightPos signifies
                 axesObjArray[u].pos2 = rightPos;
-                axesObjArray[u].setAxis(comPortAdd[u]);//, leftPos, rightPos);
+                //axesObjArray[u].setAxis(comPortAdd[u]);//, leftPos, rightPos);
+                axesObjArray[u].setAxis(comPortAdd[u]);
+                print(comPortAdd[u]);
             }
             discretizeAxes = false;
         }
@@ -412,6 +423,7 @@ public class Wireless_axes : MonoBehaviour
             {
                 for (int l = 0; l < comPortAdd.Length; l++)
                 {
+                    // axesObjArray[l].toggleHapticsDataset(comPortAdd[l]);
                     axesObjArray[l].toggleHapticsDataset(comPortAdd[l]);
                 }
             }
@@ -419,15 +431,12 @@ public class Wireless_axes : MonoBehaviour
             {
                 for (int n = 0; n < comPortAdd.Length; n++)
                 {
+                    // axesObjArray[n].discreteAxes(comPortAdd[n]);
                     axesObjArray[n].discreteAxes(comPortAdd[n]);
                 }
             }
         }
         
-        
-      
-        
-
         //// Create a seprate thread to run Serial reader on (prevents lag)
         //Thread serial_reader_t = new Thread(new ThreadStart(serial_Read));
         //serial_reader_t.Start();
