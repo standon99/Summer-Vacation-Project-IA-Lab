@@ -36,7 +36,7 @@ public class Wireless_axes : MonoBehaviour
     public bool toggleHaptics = false, discretizeAxes = false, hapticTracking = true, drawCube = false;
 
     public int itr = 0, xSteps = 4, ySteps = 4, zSteps = 4;
-    public int baudRate = 2000000;
+    public int baudRate = 115200;
     // Elapsed Time
     public float timeElapsed;
     public int index = 0, i = 0;
@@ -56,7 +56,7 @@ public class Wireless_axes : MonoBehaviour
     public int setter = 1;
 
     // Array for current COM port addresses that are open
-    string[] comPortAdd;
+    public string[] comPortAdd = { "COM5" };/////////////////////////!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // Old COM port adress (from last frame)
     string[] comPortAddOld;
 
@@ -370,10 +370,11 @@ public class Wireless_axes : MonoBehaviour
 
     void Start()
     {
-        // Define new serial port, and open it for communication
         asar = new WirelessArduinoSlidesAndRotary.ArduinoReaderHaptics();
-        baudRate = 2000000;
-        comPortAdd = asar.findCOMPorts(baudRate);
+        baudRate = 115200;
+        //comPortAdd = asar.findCOMPorts(baudRate);
+        string[] comPortAdd = {"COM5"};
+        //string[] comPortAdd;
         for (int o = 0; o < comPortAdd.Length; o++)
         {
             createAxesObj(o);
@@ -401,7 +402,7 @@ public class Wireless_axes : MonoBehaviour
                 }
             }
         }
-        if (!toggleHaptics)
+        if (!toggleHaptics && itr % 15 == 0)
         {
             //print("COM Port ADD LENGTH");
             //print(comPortAdd.Length);
@@ -417,7 +418,7 @@ public class Wireless_axes : MonoBehaviour
             }
             discretizeAxes = false;
         }
-        else
+        else if (itr % 15 == 0)
         {
             if (!discretizeAxes)
             {
