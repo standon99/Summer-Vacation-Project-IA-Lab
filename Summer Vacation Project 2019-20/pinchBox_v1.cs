@@ -31,12 +31,13 @@ using System.Threading;
 using System.Reflection;
 using System.IO.Ports;
 
-public class Triple_axis_V1 : MonoBehaviour
+public class pinchBox_v1 : MonoBehaviour
 {
     // Add controller object to the program
     Controller controller;
     [SerializeField] VirtualFaderAxis _virtualFaderAxisTwo;
     //private GameObject cube1;///////////// creating sample cube game object
+    private GameObject[] slidersArray;
 
     private bool full_vol = false, hands_out_of_view = false;
     private bool interaction_box = true;
@@ -56,10 +57,10 @@ public class Triple_axis_V1 : MonoBehaviour
     private Vector handCenterV;
     private float[] old_pos_x_hand = new float[2];
     private float x_axis_hand;
-    private float[,] fingerTipV_x = new float[2,5], fingerTipV_z = new float[2,5], fingerTipV_y = new float[2,5], thumbTipV = new float[2,5], indexThumbMidV_X = new float[2,5], indexThumbMidV_Y = new float[2,5], indexThumbMidV_Z = new float[2,5];
-    private float [] oldFingerTipV = new float[2];
+    private float[,] fingerTipV_x = new float[2, 5], fingerTipV_z = new float[2, 5], fingerTipV_y = new float[2, 5], thumbTipV = new float[2, 5], indexThumbMidV_X = new float[2, 5], indexThumbMidV_Y = new float[2, 5], indexThumbMidV_Z = new float[2, 5];
+    private float[] oldFingerTipV = new float[2];
     private float[] oldThumbTipV = new float[2];
-   
+
     // Elapsed Time
     public float timeElapsed;
     public int index = 0, i = 0;
@@ -67,14 +68,14 @@ public class Triple_axis_V1 : MonoBehaviour
     // Along x axis of LEAP motion module
     //public int[] pos_x;
     public float x_axis_index = 0, x_axis_thumb = 0;
-    public float [] old_pos_x_index = new float[2], old_pos_x_thumb = new float[2];
+    public float[] old_pos_x_index = new float[2], old_pos_x_thumb = new float[2];
 
     // Vertical axis from LEAP motion module
     public float y_axis_index = 0;
     public float[] old_pos_y_index = new float[2];
 
     public float y_axis_thumb = 0;
-    public float[] old_pos_y_thumb= new float[2];
+    public float[] old_pos_y_thumb = new float[2];
 
     // Z axis from LEAP motion module
     public float z_axis_index = 0;
@@ -104,9 +105,9 @@ public class Triple_axis_V1 : MonoBehaviour
 
     // Variable to store gesture type
     public string gesture;
-    public int[,] pinchHistory = new int[2,5];
+    public int[,] pinchHistory = new int[2, 5];
     public float pinchAvg = 0;
-    public float[,] pinchDistHistory = new float[2,5];
+    public float[,] pinchDistHistory = new float[2, 5];
     public int[] yAxis = { 0, 1 }, xAxis = { 3, 2 }, zAxis = { 5, 4 };
 
     public int[] sentPositions;
@@ -118,6 +119,25 @@ public class Triple_axis_V1 : MonoBehaviour
     public int x0 = 0;
     ArduinoSlidesAndRotary.ArduinoReaderHaptics asar;
 
+    float virtualSliderManipulate(int sentVal)
+    {
+        float lowestVal = 0.0044f;
+        float highestVal = 0.11f;
+        float reqPosition = ((highestVal- lowestVal) *sentVal/255) + lowestVal;
+        return reqPosition;
+    }
+
+    GameObject[] virtualSliderInitialize()
+    {
+        GameObject xMin = GameObject.Find("XMinSlider");
+        GameObject yMin = GameObject.Find("YMinSlider");
+        GameObject zMin = GameObject.Find("ZMinSlider");
+        GameObject xMax = GameObject.Find("XMaxSlider");
+        GameObject yMax = GameObject.Find("YMaxSlider");
+        GameObject zMax = GameObject.Find("ZMaxSlider");
+        GameObject[] slidersArray = {xMin, yMin, zMin, xMax, yMax, zMax};
+        return slidersArray;
+    }
     /* Function to identify hand gestures
      * Inputs:
      * - thumbTip - Position of tip of thumb
@@ -226,24 +246,24 @@ public class Triple_axis_V1 : MonoBehaviour
             {
                 if (fingerDist <= 55)
                 {
-                    pinchHistory[i,itr % 5] = 1;
+                    pinchHistory[i, itr % 5] = 1;
                     //pinchDistHistory[itr % 5] = fingerDist;
                 }
                 else
                 {
-                    pinchHistory[i,itr % 5] = 0;
+                    pinchHistory[i, itr % 5] = 0;
                 }
                 gesture = "pinch";
             }
             else
             {
-                pinchHistory[i,itr % 5] = 0;
+                pinchHistory[i, itr % 5] = 0;
             }
 
             // Compute average of pinches
             for (int c = 0; c < 5; c++)
             {
-                pinchSum += pinchHistory[i,c];
+                pinchSum += pinchHistory[i, c];
             }
 
             pinchAvg = (float)(pinchSum / 5);
@@ -372,7 +392,7 @@ public class Triple_axis_V1 : MonoBehaviour
                     // if above origin (+)
                     if (vals[i] >= 0)
                     {
-                        normalized_val[i] = (1024 / ((xyz_max[i]) * 2)) * vals[i] + (float)(1023/2);
+                        normalized_val[i] = (1024 / ((xyz_max[i]) * 2)) * vals[i] + (float)(1023 / 2);
                         print(normalized_val);
                     }
 
@@ -443,7 +463,7 @@ public class Triple_axis_V1 : MonoBehaviour
         float noiseEst = (float)1;
         float[] results = new float[3];
         float x_predict;
-        
+
         float q = (float)0.35; // Reflects confidence in the model used (lower means more accurate) //0.35
         float p_predict;
         float pt;
@@ -509,17 +529,17 @@ public class Triple_axis_V1 : MonoBehaviour
         Vector3 minVector = Vector3.Min(thumbPos2, indexPos2);
         Vector3 maxVector = Vector3.Max(thumbPos2, indexPos2);
 
-       // minVector = minVector + Vector3.one / 2f;
-       // maxVector = maxVector + Vector3.one / 2f;
+        // minVector = minVector + Vector3.one / 2f;
+        // maxVector = maxVector + Vector3.one / 2f;
 
-        
+
         int xmax = (int)(1023f * (1f - minVector.x));
         int ymin = (int)(1023f * minVector.y);
         int zmin = (int)(1023f * minVector.z);
         int xmin = (int)(1023f * (1f - maxVector.x));
         int ymax = (int)(1023f * maxVector.y);
         int zmax = (int)(1023f * maxVector.z);
-        
+
         /*
         float xmin = minVector.x;
         float ymin = minVector.y;
@@ -585,7 +605,7 @@ public class Triple_axis_V1 : MonoBehaviour
 
     public void ObjectRotation(GameObject obj, float x, float y, float z)
     {
-        obj.transform.rotation = Quaternion.Euler(new Vector3(x,y,z));
+        obj.transform.rotation = Quaternion.Euler(new Vector3(x, y, z));
     }
 
     public static object GetPropValue(object src, string propName)
@@ -609,21 +629,21 @@ public class Triple_axis_V1 : MonoBehaviour
             if (setter == 1)
             {
                 sentPositions = new int[ind];
-                sentRotaryVals = new int[ind/2];
-                sentRotaryValsHist = new int[ind/2];
-                for (int b = 0; b < ind/2; b++)
+                sentRotaryVals = new int[ind / 2];
+                sentRotaryValsHist = new int[ind / 2];
+                for (int b = 0; b < ind / 2; b++)
                 {
                     sentRotaryVals[b] = 0;
                     sentRotaryValsHist[b] = 0;
                 }
-                sentButtonVals = new int[ind/2];
-                
+                sentButtonVals = new int[ind / 2];
+
                 setter = 0;
             }
 
             //int cntr = 0;
 
-            for (int u = 0; u < (string_len/2); u++)
+            for (int u = 0; u < (string_len / 2); u++)
             {
                 sentPositions[u] = Int32.Parse(numbers[u]);
                 //print("POS VAL");
@@ -632,13 +652,13 @@ public class Triple_axis_V1 : MonoBehaviour
             }
 
             cntr = 0;
-            for (int m = string_len / 2; m < (string_len); m=m+2)
+            for (int m = string_len / 2; m < (string_len); m = m + 2)
             {
                 if (Int32.Parse(numbers[m]) != 255)
                 {
-                    if ((sentRotaryValsHist[cntr]- Int32.Parse(numbers[m]) > 5) || (Int32.Parse(numbers[m]) - sentRotaryValsHist[cntr] > 5))
+                    if ((sentRotaryValsHist[cntr] - Int32.Parse(numbers[m]) > 5) || (Int32.Parse(numbers[m]) - sentRotaryValsHist[cntr] > 5))
                     {
-                        
+
                         if (sentRotaryValsHist[cntr] > Int32.Parse(numbers[m]))
                         {
                             sentRotaryVals[cntr] += Int32.Parse(numbers[m]);
@@ -649,7 +669,7 @@ public class Triple_axis_V1 : MonoBehaviour
                             sentRotaryVals[cntr] -= 24 - Int32.Parse(numbers[m]);
                             sentRotaryVals[cntr] -= sentRotaryValsHist[cntr];
                         }
-                    }  
+                    }
                     else
                     {
                         if (sentRotaryValsHist[cntr] > Int32.Parse(numbers[m]))
@@ -662,7 +682,7 @@ public class Triple_axis_V1 : MonoBehaviour
                         }
                     }
                     sentRotaryValsHist[cntr] = Int32.Parse(numbers[m]);
-}
+                }
                 else
                 {
                     sentRotaryVals[cntr] = 66666; // If not reading proper rotary values set error code 5000 (to be discarded in future computations)
@@ -672,7 +692,7 @@ public class Triple_axis_V1 : MonoBehaviour
                 cntr++;
             }
             cntr = 0;
-            for (int n = string_len / 2 + 1; n <= (string_len); n=n+2)
+            for (int n = string_len / 2 + 1; n <= (string_len); n = n + 2)
             {
                 sentButtonVals[cntr] = Int32.Parse(numbers[n]);
                 if (sentButtonVals[cntr] == 255)
@@ -690,7 +710,7 @@ public class Triple_axis_V1 : MonoBehaviour
 
         ///// Rotating sample cube
         //float rot_val = (360/24)/2 * sentRotaryVals[1];
-        string[] slider_ids = new string[6]{ "Z_AXIS_MIN", "Z_AXIS_MAX", "X_AXIS_MIN", "X_AXIS_MAX", "Y_AXIS_MIN", "Y_AXIS_MAX" };
+        string[] slider_ids = new string[6] { "Z_AXIS_MIN", "Z_AXIS_MAX", "X_AXIS_MIN", "X_AXIS_MAX", "Y_AXIS_MIN", "Y_AXIS_MAX" };
         /*
         for (int m = 0; m < sentPositions.Length; m++)
         {
@@ -735,14 +755,14 @@ public class Triple_axis_V1 : MonoBehaviour
     }
 
     void Start()
-    { 
+    {
         // Define new serial port, and open it for communication
         asar = new ArduinoSlidesAndRotary.ArduinoReaderHaptics();
         asar.ArduinoReader(COM, 2000000);
         asar.BeginRead();
         //haptics = new ArduinoSlidesAndRotary.HapticsClass.haptic();
         //haptics = new ArduinoSlidesAndRotary.ArduinoReader(COM, 2000000);
-        
+
         /* CUBE FOR ENCODER DEMO
         // Initialize Cube
         cube1 = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -752,16 +772,18 @@ public class Triple_axis_V1 : MonoBehaviour
         cube1.GetComponent<Renderer>().material.color = Color.blue;
         cube1.name = "obj";
         */
+
+        slidersArray = virtualSliderInitialize();
     }
 
     // Update is called once per frame
     void Update()
     {
         // Create a seprate thread to run Serial reader on (prevents lag)
-        Thread serial_reader_t = new Thread(new ThreadStart(serial_Read));
-        serial_reader_t.Start();
-        //serial_reader_t.Join();
-        
+        //Thread serial_reader_t = new Thread(new ThreadStart(serial_Read));
+        //serial_reader_t.Start();
+        ////serial_reader_t.Join();
+
         if (freeze == false)
         {
             if (toggleHaptics)
@@ -769,7 +791,7 @@ public class Triple_axis_V1 : MonoBehaviour
                 if (!discretizeAxes)
                 {
                     //asar.regularStep(0, 0, 0);
-                    asar.haptic(); 
+                    asar.haptic();
                 }
                 else if (discretizeAxes)
                 {
@@ -797,7 +819,7 @@ public class Triple_axis_V1 : MonoBehaviour
             stopwatch.Stop();
             timeElapsed = (int)stopwatch.ElapsedMilliseconds; // Record time between frames
             stopwatch.Reset(); // Reset stopwatch function
-            
+
             // Start timer to find runtime of each frame
             stopwatch.Start();
 
@@ -807,18 +829,18 @@ public class Triple_axis_V1 : MonoBehaviour
             {
                 for (i = 0; i < numberHands; i++)
                 {
-              
+
                     handInFrameT += (int)timeElapsed;
                     hands_out_of_view = false;
                     List<Hand> hands = frame.Hands;
-                    
+
                     if (hands[0].IsRight && numberHands > 1)
                     {
                         Hand Handholder = hands[0];
                         hands[0] = hands[1];
                         hands[1] = Handholder;
                     }
-                    
+
                     Hand Hand = hands[i];
                     if (trackFinger)
                     {
@@ -855,18 +877,18 @@ public class Triple_axis_V1 : MonoBehaviour
                         //print(midPThumbIndex.z);
 
                         // Call function to compute the velocity of finger tips
-                        fingerTipV_x[i,index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
-                        fingerTipV_y[i,index] = velocity(y_axis_index, old_pos_y_index[i], timeElapsed);
-                        fingerTipV_z[i,index] = velocity(z_axis_index, old_pos_z_index[i], timeElapsed);
+                        fingerTipV_x[i, index] = velocity(x_axis_index, old_pos_x_index[i], timeElapsed);
+                        fingerTipV_y[i, index] = velocity(y_axis_index, old_pos_y_index[i], timeElapsed);
+                        fingerTipV_z[i, index] = velocity(z_axis_index, old_pos_z_index[i], timeElapsed);
 
                         index = itr % 5;
 
                         //thumbTipV[index] = velocity(x_axis_thumb, old_pos_x_thumb[i], timeElapsed);
 
                         // Velocity of index finger and thumb midpoint
-                        indexThumbMidV_X[i,index] = velocity(midPThumbIndex.x, old_midPThumbIndex[i].x, timeElapsed);
-                        indexThumbMidV_Y[i,index] = velocity(midPThumbIndex.y, old_midPThumbIndex[i].y, timeElapsed);
-                        indexThumbMidV_Z[i,index] = velocity(midPThumbIndex.z, old_midPThumbIndex[i].z, timeElapsed);
+                        indexThumbMidV_X[i, index] = velocity(midPThumbIndex.x, old_midPThumbIndex[i].x, timeElapsed);
+                        indexThumbMidV_Y[i, index] = velocity(midPThumbIndex.y, old_midPThumbIndex[i].y, timeElapsed);
+                        indexThumbMidV_Z[i, index] = velocity(midPThumbIndex.z, old_midPThumbIndex[i].z, timeElapsed);
 
                         // Tracking the position of the tip of the index finger in all three dimensions
                         old_pos_x_index[i] = x_axis_index;
@@ -882,7 +904,7 @@ public class Triple_axis_V1 : MonoBehaviour
                         old_pos_x_thumb[i] = x_axis_thumb;
                         x_axis_thumb = thumbTip.x;
 
-                        old_pos_y_thumb[i]= y_axis_thumb;
+                        old_pos_y_thumb[i] = y_axis_thumb;
                         y_axis_thumb = thumbTip.y;
 
                         old_pos_z_thumb[i] = z_axis_thumb;
@@ -910,11 +932,11 @@ public class Triple_axis_V1 : MonoBehaviour
                         x_axis_hand = handCenter.x;
                     }
 
-                    if (drawCube && i == 0)
+                    if (drawCube && numberHands > 1)
                     {
-                        snapTo(thumbTip, fingerTip);
+                        //snapTo(thumbTip, fingerTip);
                     }
-                    else if(!drawCube)
+                    else if (true)//else if (!drawCube) /// Removed draw cube option here
                     {
                         if (gesture == "pinch") // x_axis_index > (old_pos_x_index[i] + 10) || x_axis_index < (old_pos_x_index[i] - 10)
                         {
@@ -928,12 +950,12 @@ public class Triple_axis_V1 : MonoBehaviour
                                 filtered_y = kalmanFilter(midPThumbIndex.y, itr, indexThumbMidV_Y, old_filtered_y[i], old_p_x_yaxis[i], (float)timeElapsed, i);
                                 old_filtered_y[i] = filtered_y[0];
                                 old_p_x_yaxis[i] = filtered_y[1];
-                               // print(filtered_y[1]);
+                                // print(filtered_y[1]);
 
                                 filtered_z = kalmanFilter(midPThumbIndex.z, itr, indexThumbMidV_Z, old_filtered_z[i], old_p_x_zaxis[i], (float)timeElapsed, i);
                                 old_filtered_z[i] = filtered_z[0];
                                 old_p_x_zaxis[i] = filtered_z[1];
-                               // print(filtered_z[1]);
+                                // print(filtered_z[1]);
 
                                 float[] sent_data_array = { filtered_x[0], filtered_y[0], filtered_z[0] };
                                 sent_data = normalizedData(sent_data_array);
@@ -944,6 +966,17 @@ public class Triple_axis_V1 : MonoBehaviour
                                         try
                                         {
                                             asar.SendMessage(xAxis[i], (int)sent_data[0]);
+                                            GameObject obj = slidersArray[0];
+                                            float reqVal = virtualSliderManipulate((int)sent_data[0]);
+                                            Vector3 posVir = obj.transform.position;
+                                            posVir.x = -reqVal;
+                                            obj.transform.position = posVir;
+                                            if (numberHands == 1)
+                                            {
+                                                asar.SendMessage(xAxis[1], (int)sent_data[0]);
+                                                obj = slidersArray[1];
+                                                
+                                            }
                                             //print("SENT X");
                                         }
                                         catch (Exception e)
@@ -958,6 +991,10 @@ public class Triple_axis_V1 : MonoBehaviour
                                         try
                                         {
                                             asar.SendMessage(yAxis[i], (int)sent_data[1]);
+                                            if (numberHands == 1)
+                                            {
+                                                asar.SendMessage(yAxis[1], (int)sent_data[1]);
+                                            }
                                             //print("SENT Y");
                                         }
                                         catch (Exception e)
@@ -972,7 +1009,11 @@ public class Triple_axis_V1 : MonoBehaviour
                                         try
                                         {
                                             asar.SendMessage(zAxis[i], (int)sent_data[2]);
-                                           //print("SENT Z");
+                                            if (numberHands == 1)
+                                            {
+                                                asar.SendMessage(zAxis[1], (int)sent_data[2]);
+                                            }
+                                            //print("SENT Z");
                                         }
                                         catch (Exception e)
                                         {
@@ -1042,7 +1083,7 @@ public class Triple_axis_V1 : MonoBehaviour
                             }
                         }
                     }
-                   
+
                     /*
                     else if (gesture == "x point" || gesture == "y point" || gesture == "z point")
                     {

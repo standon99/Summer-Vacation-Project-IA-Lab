@@ -86,7 +86,7 @@ int timeNow;
 
 
 const float minForce = 256;
-const float maxForce = 50;
+const float maxForce = 100;
 const int nbData = maxForce;
 float data[nbData];
 bool mov = true;
@@ -104,7 +104,7 @@ int times[2];
 // Data sets for use in mapping haptics
 float data0[nbData] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10 , 10 , 10 , 10, 10, 10 , 10, 10, 0, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; //{0, 1, 2, 3, 4, 4, 4, 0};
 float data1[nbData] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10 , 10 , 10 , 10, 10, 10 , 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 0, 0}; // 10 replaced 4
-float data2[nbData] = {0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 , 10 , 10 , 10, 10, 200 , 200, 200, 200, 200, 200, 200, 200, 200, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0}; //{0, 1, 2, 3, 4, 4, 4, 2, 1, 0};
+float data2[nbData] = {0, 0, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 , 10 , 10 , 10, 200, 200, 200 , 200, 200, 200, 200, 200, 200, 200, 200, 200, 200 , 200, 200, 200, 200, 200, 200, 200, 200, 200, 200 , 200, 200, 200, 200, 200, 200, 200, 200, 200, 200 , 200, 200, 200, 200, 200, 200, 200, 200, 200, 200 , 200, 200, 200, 200, 200, 200, 200, 200, 200 , 200, 200, 200, 200, 200, 200, 200, 200, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0}; //{0, 1, 2, 3, 4, 4, 4, 2, 1, 0};
 bool corr_loc[3][2] = {{false, false},
   {false, false},
   {false, false}
@@ -118,32 +118,6 @@ int hapticsStat;
 int xStep;
 int yStep;
 int zStep;
-
-
-void discreteAxes(int steps)
-{
-  int currPosition = analogRead(A0);
-  int value;
-  int Cnt2 = currPosition / (1023 / steps);
-  int intervalCount2 = (1023 / steps) * Cnt2;
-  int val2 = (intervalCount2 + ((1023 / steps) / 2));
-
-  if (currPosition > (intervalCount2 + ((1023 / steps) / 2) + 25))
-  {
-    digitalWrite(32, HIGH);
-    digitalWrite(33, LOW);
-  }
-  else if (currPosition < (intervalCount2 + ((1023 / steps) / 2) - 25))
-  {
-    digitalWrite(33, HIGH);
-    digitalWrite(32, LOW);
-  }
-  else
-  {
-    digitalWrite(32, LOW);
-    digitalWrite(33, LOW);
-  }
-}
 
 
 /*
@@ -165,20 +139,34 @@ void setAddress(String address) {
   myAddress = address.toInt();
 }
 
+
+// NEED TO ADJUST PWM
 void sliderToVal(int val1, int val2) {
   int pos1 = analogRead(A2);
   int pos2 = analogRead(A3);
-  int value;
-  int value1 = abs(pos1 - val1) * 2 + 450; // was 450
-  int value2 = abs(pos2 - val2) * 2 + 450;
+  Serial.println("pos1");
+  Serial.println(pos1);
+  Serial.println("pos2");
+  Serial.println(pos2);
+  //int value;
+
   int mapVal1 = map(val1, 0, 127, 0, 511);///
   int mapVal2 = map(val2, 0, 127, 0, 511);///
-  if (abs(pos1 - mapVal1) > 10) // was 2
+
+  int value1 = abs(pos1 - val1) * 0.1 + 165; // was 450
+  if (value1 > 255) value1 = 255;
+  int value2 = abs(pos2 - val2) * 0.1 + 165;
+  if (value2 > 255) value2 = 255;
+  Serial.println("Val 2");
+  Serial.println(value2);
+  Serial.println("Val 1");
+  Serial.println(value1);
+  if (abs(pos1 - val1) > 100) // was 2
   {
-    if (pos1 > mapVal1)
+    if (pos1 > val1)
     {
       ledcWrite(0, 0);
-      ledcWrite(1, 255);
+      ledcWrite(1, value1);
       //digitalWrite(33, LOW);
       ///analogWrite(10, value);//
       //digitalWrite(32, HIGH);
@@ -186,7 +174,7 @@ void sliderToVal(int val1, int val2) {
     else
     {
       ledcWrite(1, 0);
-      ledcWrite(0, 255);
+      ledcWrite(0, value1);
       //digitalWrite(32, LOW);
       //analogWrite(33, value);///
       //digitalWrite(33, HIGH);
@@ -200,12 +188,12 @@ void sliderToVal(int val1, int val2) {
     //digitalWrite(33, LOW);
   }
 
-  if (abs(pos2 - mapVal2) > 10) // was 2
+  if (abs(pos2 - val2) > 100) // was 2
   {
-    if (pos2 > mapVal2)
+    if (pos2 > val2)
     {
       ledcWrite(2, 0);
-      ledcWrite(3, 255);
+      ledcWrite(3, value2);
       //digitalWrite(14, LOW);
       ///analogWrite(10, value);//
       //digitalWrite(15, HIGH);
@@ -213,7 +201,7 @@ void sliderToVal(int val1, int val2) {
     else
     {
       ledcWrite(3, 0);
-      ledcWrite(2, 255);
+      ledcWrite(2, value2);
       //digitalWrite(15, LOW);
       //analogWrite(33, value);///
       //digitalWrite(14, HIGH);
@@ -297,9 +285,10 @@ void encoderRead()
   }
 }
 
-void newHapticFunc(int k)
+void newHapticFunc(int k, int j) // k is the data set the first slider is mapping, and j is the data set the second slider is mapping
 {
-  int currPosition = analogRead(A0);
+  int currPosition1 = analogRead(A2);
+  int currPosition2 = analogRead(A3);
   //float data[nbData] = {0,5,10,100,100,10,5,0};
 
   // Map different data sets depending on the value of k
@@ -326,41 +315,98 @@ void newHapticFunc(int k)
   }
 
   // Define number of intervals needed
-  int intervals = 1023 / (nbData - 1);
+  int intervals = 4025 / (nbData - 1);
   int intervalCount = 0, Cnt = 0;
 
   // Iterate through past all the points already passed by the slider
-  Cnt = currPosition / intervals;
+  Cnt = currPosition1 / intervals;
   intervalCount = intervals * Cnt;
   // Find data value corresponding to current fader position
   int currData = data[Cnt];
-  intervals = 1023 / (currData * 5);
-  if (currData == 0) intervals = 1023 / 2;
+  intervals = 4025 / (currData * 5);
+  if (currData == 0) intervals = 4025 / 2;
   //intervalCount = 0
   if (intervals > 20) mov = false;
 
   // Snap to the nearest position-
-  if (currPosition > (intervalCount + (intervals / 2) + 4) && !(currPosition > 1022 || currPosition < 1) && mov)
+  if (currPosition1 > (intervalCount + (intervals / 2) + 10) && !(currPosition1 > 4025 || currPosition1 < 1) && mov)
   {
-    digitalWrite(9, LOW);
-    digitalWrite(10, HIGH);
+    ledcWrite(0, 0);
+    ledcWrite(1, 255);
   }
-  else if (currPosition < (intervalCount + (intervals / 2) - 4) && !(currPosition > 1022 || currPosition < 1) && mov)
+  else if (currPosition1 < (intervalCount + (intervals / 2) - 10) && !(currPosition1 > 4025 || currPosition1 < 1) && mov)
   {
-    digitalWrite(9, HIGH);
-    digitalWrite(10, LOW);
+    ledcWrite(0, 255);
+    ledcWrite(1, 0);
   }
   else
   {
-    digitalWrite(9, LOW);
-    digitalWrite(10, LOW);
+    ledcWrite(0, 0);
+    ledcWrite(1, 0);
+  }
+  mov = true;
+
+  //float data[nbData] = {0,5,10,100,100,10,5,0};
+
+  // Map different data sets depending on the value of k
+  if (j == 0)
+  {
+    for (int y = 0; y < nbData; y++)
+    {
+      data[y] = data0[y];
+    }
+  }
+  else if (j == 1)
+  {
+    for (int y = 0; y < nbData; y++)
+    {
+      data[y] = data1[y];
+    }
+  }
+  else if (j == 2)
+  {
+    for (int y = 0; y < nbData; y++)
+    {
+      data[y] = data2[y];
+    }
+  }
+
+  // Define number of intervals needed
+  intervals = 4025 / (nbData - 1);
+  intervalCount = 0, Cnt = 0;
+
+  // Iterate through past all the points already passed by the slider
+  Cnt = currPosition2 / intervals;
+  intervalCount = intervals * Cnt;
+  // Find data value corresponding to current fader position
+  currData = data[Cnt];
+  intervals = 4025 / (currData * 5);
+  if (currData == 0) intervals = 4025 / 2;
+  //intervalCount = 0
+  if (intervals > 20) mov = false;
+
+  // Snap to the nearest position-
+  if (currPosition2 > (intervalCount + (intervals / 2) + 10) && !(currPosition2 > 4025 || currPosition2 < 1) && mov)
+  {
+    ledcWrite(2, 0);
+    ledcWrite(3, 255);
+  }
+  else if (currPosition2 < (intervalCount + (intervals / 2) - 10) && !(currPosition2 > 4025 || currPosition2 < 1) && mov)
+  {
+    ledcWrite(2, 255);
+    ledcWrite(3, 0);
+  }
+  else
+  {
+    ledcWrite(2, 0);
+    ledcWrite(3, 0);
   }
   mov = true;
 }
 
 void updateEncoder() {
   //SerialBT.print ("Called");
-  
+
   interrupt_cnt++;
   int timeDiff;
   int inputB = ledcRead(encoder1); // Don't need to test both encoder inputs because A is already high, this interrupt was called on the rising edge.
@@ -406,6 +452,63 @@ void updateEncoder() {
   //encoderValue = 70;
   //Serial.println(encoderValue); //  Right hand connector test ok.
 }
+
+
+void discreteAxes(int steps1, int steps2)
+{
+  Serial.println("CALLED");
+  int currPosition1 = analogRead(A2);
+  int currPosition2 = analogRead(A3);
+
+  int value;
+  int Cnt2 = currPosition1 / (4024 / steps1);
+  int intervalCount2 = (4025 / steps1) * Cnt2;
+  int val2 = (intervalCount2 + ((4024 / steps1) / 2));
+  Serial.println(intervalCount2);
+
+  if (currPosition1 > (intervalCount2 + ((4024 / steps1) / 2) + 60))
+  {
+    ledcAttachPin(0, 255);
+    ledcAttachPin(1, 0);
+   // Serial.println("Here1");
+  }
+  else if (currPosition1 < (intervalCount2 + ((4024 / steps1) / 2) - 60))
+  {
+    ledcAttachPin(1, 255);
+    ledcAttachPin(0, 0);
+    //Serial.println("Here2");
+  }
+  else
+  {
+    ledcAttachPin(1, 0);
+    ledcAttachPin(0, 0);
+    //Serial.println("IN ELSE");
+  }
+/*
+  Cnt2 = currPosition2 / (4025 / steps2);
+  intervalCount2 = (4025 / steps2) * Cnt2;
+  val2 = (intervalCount2 + ((4025 / steps2) / 2));
+
+  if (currPosition2 > (intervalCount2 + ((4025 / steps2) / 2) + 60))
+  {
+    ledcAttachPin(2, 255);
+    ledcAttachPin(3, 0);
+  }
+  else if (currPosition2 < (intervalCount2 + ((4025 / steps2) / 2) - 60))
+  {
+    ledcAttachPin(3, 255);
+    ledcAttachPin(2, 0);
+  }
+  else
+  {
+    ledcAttachPin(2, 0);
+    ledcAttachPin(3, 0);
+  }
+
+*/
+}
+
+
 int asciiReader(char symbol)
 {
   int number;
@@ -413,6 +516,8 @@ int asciiReader(char symbol)
   number = asciiNo - 48;
   return number;
 }
+
+
 void setup() {
   Serial.begin(2000000);
   SerialBT.begin("FaderAxisMASTERUNIT"); //Change this for each unit
@@ -422,7 +527,7 @@ void setup() {
   pinMode(13, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(encoder2), updateEncoder, RISING);
 
-  analogReadResolution(4); // can set this all the way to 12bits of resolution
+  //analogReadResolution(4); // can set this all the way to 12bits of resolution
   ////pwmsetup
 
   for (int i = 0; i < 4; i++)
@@ -451,7 +556,7 @@ void setup() {
 
 void loop() {
   //sliderToVal(502, 10);
-  //Serial.println(encoderValue); 
+  //Serial.println(encoderValue);
   //Serial.println(analogRead(A3));
   //Serial.println(analogRead(A2));
   bat = analogRead(batVoltage);
@@ -490,18 +595,18 @@ void loop() {
       old_id = id;
 
       mode = 0;
-//      digit1 = message[0] - '0';
-//      digit2 = message[1] - '0';
-//      digit3 = message[2] - '0';
-//      digit4 = message[3] - '0';
-//      digit5 = message[4] - '0';
-//      digit6 = message[5] - '0';
-//      digit7 = message[6] - '0';
-//      digit8 = message[7] - '0';
-//      digit9 = message[8] - '0';
-//      digit10 = message[9] - '0';
-//      digit11 = message[10] - '0';
-//      digit12 = message[11] - '0';
+      //      digit1 = message[0] - '0';
+      //      digit2 = message[1] - '0';
+      //      digit3 = message[2] - '0';
+      //      digit4 = message[3] - '0';
+      //      digit5 = message[4] - '0';
+      //      digit6 = message[5] - '0';
+      //      digit7 = message[6] - '0';
+      //      digit8 = message[7] - '0';
+      //      digit9 = message[8] - '0';
+      //      digit10 = message[9] - '0';
+      //      digit11 = message[10] - '0';
+      //      digit12 = message[11] - '0';
       digit1 = asciiReader(message[0]);
       digit2 = asciiReader(message[1]);
       digit3 = asciiReader(message[2]);
@@ -513,7 +618,8 @@ void loop() {
       digit9 = asciiReader(message[8]);
       digit10 = asciiReader(message[9]);
       digit11 = asciiReader(message[10]);
-      digit12= asciiReader(message[11]);
+      digit12 = asciiReader(message[11]);
+      //digit13= asciiReader(message[12]); ///
       //digit12 = asciiReader(message[12]);
       Serial.println(digit1);
       Serial.println(digit2);
@@ -538,22 +644,39 @@ void loop() {
       //Serial.println(digit2);
       //Serial.println(message[9].toInt());
       hapticsStat = digit9;
+      Serial.println("HAPTICS STAT");
+      Serial.println(hapticsStat);
       xStep = digit10;
       yStep = digit11;
       zStep = digit12;
-      if (hapticsStat == 0)
-      {
+      /*
+        if (hapticsStat == 0)
+        {
         //val1 = 100; val2 = 100;
         sliderToVal(val1, val2);
-      }
-      else if (hapticsStat == 1)
-      {
-        newHapticFunc(1); // Must change for each ESP
-      }
-      else if (hapticsStat == 2)
-      {
+        }
+        else if (hapticsStat == 1)
+        {
+        newHapticFunc(2, 2); // Must change for each ESP
+        }
+        else if (hapticsStat == 2)
+        {
         discreteAxes(zStep); // must change from unity side
-      }
+        }
+      */
     }
+  }
+  if (hapticsStat == 0)
+  {
+    //val1 = 100; val2 = 100;
+    sliderToVal(val1, val2);
+  }
+  else if (hapticsStat == 1)
+  {
+    newHapticFunc(2, 2); // Must change for each ESP
+  }
+  else if (hapticsStat == 2)
+  {
+    discreteAxes(4, 4); // must change from unity side
   }
 }
