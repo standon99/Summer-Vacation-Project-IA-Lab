@@ -1,4 +1,3 @@
-
 #include "BluetoothSerial.h"
 
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
@@ -153,15 +152,15 @@ void sliderToVal(int val1, int val2) {
   int mapVal1 = map(val1, 0, 127, 0, 511);///
   int mapVal2 = map(val2, 0, 127, 0, 511);///
 
-  int value1 = abs(pos1 - val1) * 0.1 + 165; // was 450
+  int value1 = abs(pos1 - val1) * 0.15 + 240; // was 450
   if (value1 > 255) value1 = 255;
-  int value2 = abs(pos2 - val2) * 0.1 + 165;
+  int value2 = abs(pos2 - val2) * 0.15 + 240;
   if (value2 > 255) value2 = 255;
   Serial.println("Val 2");
   Serial.println(value2);
   Serial.println("Val 1");
   Serial.println(value1);
-  if (abs(pos1 - val1) > 100) // was 2
+  if (abs(pos1 - val1) > 80) // was 2
   {
     if (pos1 > val1)
     {
@@ -188,7 +187,7 @@ void sliderToVal(int val1, int val2) {
     //digitalWrite(33, LOW);
   }
 
-  if (abs(pos2 - val2) > 100) // was 2
+  if (abs(pos2 - val2) > 80) // was 2
   {
     if (pos2 > val2)
     {
@@ -461,7 +460,7 @@ void discreteAxes(int steps1, int steps2)
   int currPosition2 = analogRead(A3);
 
   int value;
-  int Cnt2 = currPosition1 / (4024 / steps1);
+  int Cnt2 = currPosition1 / (int)(4024 / steps1);
   int intervalCount2 = (4025 / steps1) * Cnt2;
   int val2 = (intervalCount2 + ((4024 / steps1) / 2));
   Serial.println(intervalCount2);
@@ -520,12 +519,12 @@ int asciiReader(char symbol)
 
 void setup() {
   Serial.begin(2000000);
-  SerialBT.begin("FaderAxisMASTERUNIT"); //Change this for each unit
+  SerialBT.begin("FaderAxisSINGLE_ESP"); //Change this for each unit
   pinMode(encoder1, INPUT_PULLUP);
   pinMode(encoder2, INPUT_PULLUP);
   pinMode(pushbutton, INPUT_PULLUP);
   pinMode(13, OUTPUT);
-  attachInterrupt(digitalPinToInterrupt(encoder2), updateEncoder, RISING);
+  attachInterrupt(digitalPinToInterrupt(encoder2), updateEncoder, RISING);////////////////////////////////
 
   //analogReadResolution(4); // can set this all the way to 12bits of resolution
   ////pwmsetup
@@ -555,6 +554,7 @@ void setup() {
 }
 
 void loop() {
+  SerialBT.println("SECOND AXIS HERE");
   //sliderToVal(502, 10);
   //Serial.println(encoderValue);
   //Serial.println(analogRead(A3));
